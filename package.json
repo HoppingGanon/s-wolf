@@ -1,0 +1,31 @@
+{
+  "name": "s-wolf",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio",
+    "serve": "ts-node --esm prisma/index.ts",
+    "db": "cd db & docker-compose up"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4",
+    "vuex": "^4.1.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^5.0.0",
+    "@types/express": "^4.17.17",
+    "@vitejs/plugin-vue": "^4.2.3",
+    "prisma": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vue-tsc": "^1.8.5"
+  }
+}

@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  s-wolf-db:
+    image: postgres:14.6
+    container_name: s-wolf-db
+    ports:
+      - 5432:5432
+    volumes:
+      - db-store:/var/lib/postgresql/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=k@zuya
+volumes:
+  db-store:
