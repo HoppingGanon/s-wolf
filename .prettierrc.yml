@@ -1,0 +1,16 @@
+tabWidth: 2
+# 一行の長さ
+printWidth: 80
+# 要素の最後にカンマをつけるか(none, es5, allの順に多くなっていく)
+trailingComma: 'es5'
+
+quoteProps: 'as-needed'
+semi: false
+
+singleQuote: true
+# 改行コード
+endOfLine: 'lf'
+# 閉じ括弧を同一業にするか
+bracketSameLine: true
+# 要素とかっこの間にスペースを入れるか
+bracketSpacing: true

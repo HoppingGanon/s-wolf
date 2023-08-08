@@ -8,13 +8,22 @@ datasource db {
 }
 
 model User {
-  id        Int          @id @default(autoincrement())
-  name      String       @unique @default("")
-  password  String       @default("")
-  games     GameOnUser[]
-  hostGame  Game[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @default(now())
+  id          Int          @id @default(autoincrement())
+  name        String       @default("")
+  password    String       @default("")
+  mailaddress String       @unique @default("")
+  games       GameOnUser[]
+  hostGame    Game[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now())
+}
+
+model AltUser {
+  id          Int      @id @default(autoincrement())
+  mailaddress String   @unique @default("")
+  resistCode  String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 }
 
 model Game {
