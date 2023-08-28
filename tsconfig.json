@@ -25,5 +25,7 @@
     "esm": true,
     "experimentalSpecifierResolution": "node"
   },
+  "types": ["vue3-toastify/global"],
+
   "references": [{ "path": "./tsconfig.node.json" }]
 }

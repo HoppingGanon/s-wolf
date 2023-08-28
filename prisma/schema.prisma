@@ -9,6 +9,7 @@ datasource db {
 
 model User {
   id          Int          @id @default(autoincrement())
+  code        String       @unique @default("")
   name        String       @default("")
   password    String       @default("")
   mailaddress String       @unique @default("")
@@ -16,6 +17,7 @@ model User {
   hostGame    Game[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now())
+  userActions UserAction[]
 }
 
 model AltUser {
@@ -26,14 +28,31 @@ model AltUser {
   updatedAt   DateTime @default(now())
 }
 
+enum GameStatusTytpe {
+  OPENED
+  TIMEUP
+  COMPLETED
+  CANCEL
+  COLLAPSE
+  ERROR
+}
+
 model Game {
-  id         Int          @id @default(autoincrement())
-  gameName   String       @unique
-  hostUser   User         @relation(fields: [hostUserId], references: [id])
-  hostUserId Int
-  users      GameOnUser[]
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @default(now())
+  id                Int             @id @default(autoincrement())
+  gameName          String          @unique
+  gameTitle         String
+  hostUser          User            @relation(fields: [hostUserId], references: [id])
+  hostUserId        Int
+  users             GameOnUser[]
+  actions           Action[]
+  finnalyReleasing  Boolean
+  maxMembers        Int
+  password          String
+  discussionSeconds Int             @default(180)
+  status            GameStatusTytpe @default(OPENED)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now())
+  userActions       UserAction[]
 }
 
 model GameOnUser {
@@ -43,9 +62,38 @@ model GameOnUser {
   game   Game @relation(fields: [gameId], references: [id])
 
   fetishism String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  isDied    Boolean @default(false)
 
   @@id([userId, gameId])
+}
+
+enum ActionType {
+  READY
+  INPUT
+  DISCUSSION
+  JUDGEMENT
+  EXECUTION
+  PLOT
+  KILL
+  RESULT
+}
+
+model Action {
+  id          Int          @id @default(autoincrement())
+  gameId      Int
+  game        Game         @relation(fields: [gameId], references: [id])
+  type        ActionType
+  userActions UserAction[]
+  createdAt   DateTime     @default(now())
+}
+
+model UserAction {
+  id        Int     @id @default(autoincrement())
+  actionId  Int
+  action    Action  @relation(fields: [actionId], references: [id])
+  gameId    Int
+  game      Game    @relation(fields: [gameId], references: [id])
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  completed Boolean
 }

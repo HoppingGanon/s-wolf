@@ -1,24 +1,34 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import DefaultCard from '../components/DefaultCard.vue'
 import api from '../plugins/api'
-import { requiredRule, passwordRule, emailRules } from '../../shared/rules'
-import router from '../plugins/router'
 import store from '../plugins/store'
+import { useRoute } from 'vue-router'
+import { baseRule, requiredRule, passwordRule } from '../../shared/rules'
+import router from '../plugins/router'
 import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
 
 const form = ref()
-const mail = ref('')
+const code = ref('')
+const name = ref('')
 const password = ref('')
-const loading = ref(false)
+const retype = ref('')
+
+onMounted(() => {
+  const route = useRoute()
+  code.value =
+    typeof route.params.code === 'string'
+      ? route.params.code
+      : route.params.code.join('')
+})
 
 const submit = async () => {
   if (form.value) {
     const result = await form.value.validate()
     if (result.valid) {
       api
-        .getLogin(mail.value, password.value)
+        .postUser(code.value, name.value, password.value, retype.value)
         .then((res) => {
           store.token = res.data.token
           store.code = res.data.code
@@ -30,46 +40,45 @@ const submit = async () => {
         .catch((err) => {
           toast.error(err.response?.data?.message)
         })
-        .finally(() => {
-          loading.value = false
-        })
     }
   }
 }
 </script>
 
 <template>
-  <default-card title="ログイン" style="margin-top: 100px">
+  <default-card title="ユーザー登録">
     <v-form ref="form">
       <v-row>
         <v-col>
           <v-text-field
-            label="メールアドレス"
-            v-model="mail"
-            name="mailaddress"
-            :rules="emailRules"></v-text-field>
+            label="名前"
+            v-model="name"
+            :rules="[requiredRule, baseRule]"></v-text-field>
         </v-col>
       </v-row>
-      <v-row dense>
+      <v-row>
         <v-col>
           <v-text-field
             label="パスワード"
-            type="password"
             v-model="password"
-            name="password"
-            :rules="[requiredRule, passwordRule]"></v-text-field>
+            type="password"
+            :rules="[requiredRule, passwordRule]" />
         </v-col>
       </v-row>
-      <v-row dense>
-        <v-col class="text-right">
-          <v-btn flat to="/resist/mailaddress"> <u>新規登録はこちら</u> </v-btn>
+      <v-row>
+        <v-col>
+          <v-text-field
+            label="パスワード再入力"
+            v-model="retype"
+            type="password"
+            :rules="[
+              (v: string) => v === password || 'パスワードが一致しません',
+            ]" />
         </v-col>
       </v-row>
-      <v-row dense>
+      <v-row>
         <v-col class="d-flex justify-end">
-          <v-btn color="primary" :disabled="loading" @click="submit">
-            ログイン
-          </v-btn>
+          <v-btn color="primary" @click="submit"> 登録 </v-btn>
         </v-col>
       </v-row>
     </v-form>
