@@ -9,7 +9,7 @@ import {
 import app from '../app'
 import mail from '../mail'
 import prisma from '../prisma'
-import { createToken, digestMessage } from './helper'
+import { createToken, digestMessage, verifyToken } from './helper'
 
 app.post<any, any, any, AltUserRequest>('/temp/users', async (_req, res) => {
   const address = _req.body.mailaddress
@@ -209,4 +209,13 @@ app.post<any, any, any, PostUserRequest>('/users', async (_req, res) => {
       createToken(user ? user.code : 'error-jwt=' + crypto.randomUUID()),
     code: user ? user.code : 'error-id',
   } as PostLogin)
+})
+
+app.get('/users', async (_req, res) => {
+  if ((await verifyToken(_req, res)) === false) {
+    return
+  }
+
+  const users = await prisma.user.findMany()
+  res.json(users)
 })
