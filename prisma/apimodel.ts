@@ -1,3 +1,11 @@
+export const TOKEN_LIFE_MINUTES = 2880
+export const MAX_OPENED_GAME_MINUTES = 30
+export const LIMIT_READY_SECONDS = 180
+export const LIMIT_INPUT_SECONDS = 180
+export const LIMIT_JUDGEMENT_SECONDS = 180
+export const LIMIT_EXECUTION_SECONDS = 60
+// const LIMIT_PLOT_SECONDS = 180
+
 export interface AltUserRequest {
   mailaddress: string
 }
@@ -24,6 +32,7 @@ export interface PostGameRequest {
   password: string
   memberCount: number
   finnalyReleasing: boolean
+  discussionSeconds: number
 }
 
 export interface PostGameResponse {
@@ -73,9 +82,11 @@ export interface GetGameResponse extends CheckedResponse {
   users?: GameUserData[]
 
   currentAction?: ActionType
+  actionTimeLimit: number
   userActions?: UserActionData[]
 
   maxMembers?: number
+  discussionSeconds?: number
 }
 
 export interface PostJoinGameRequest {
@@ -84,4 +95,8 @@ export interface PostJoinGameRequest {
 
 export interface PutInputRequest {
   word: string
+}
+
+export interface PutVoteRequest {
+  userCode: string
 }

@@ -18,7 +18,7 @@ onMounted(() => {
     .then((res) => {
       if (res.data.exists) {
         toast.info('既に作成済みのゲームがあったため、移動しました')
-        router.push(`/games/${res.data.gameName}`)
+        router.replace(`/games/${res.data.gameName}`)
       }
     })
     .catch((err) => {
@@ -30,6 +30,18 @@ const title = ref('')
 const password = ref('')
 const memberCount = ref(4)
 const finnalyReleasing = ref(false)
+const discussionSeconds = ref(10)
+const discussionSecondsList = [
+  { title: '10秒', value: 10 },
+  { title: '1分', value: 60 },
+  { title: '2分', value: 120 },
+  { title: '3分', value: 180 },
+  { title: '4分', value: 240 },
+  { title: '5分', value: 300 },
+  { title: '6分', value: 360 },
+  { title: '7分', value: 420 },
+  { title: '8分', value: 480 },
+]
 const form = ref()
 
 const memberCountItems: number[] = []
@@ -46,7 +58,8 @@ const submit = async () => {
           title.value,
           password.value,
           memberCount.value,
-          finnalyReleasing.value
+          finnalyReleasing.value,
+          discussionSeconds.value
         )
         .then((res) => {
           router.push(`/games/${res.data.gameName}`)
@@ -85,6 +98,14 @@ const submit = async () => {
             v-model="memberCount"
             :items="memberCountItems"
             :rules="[memberCountRule]" />
+        </v-col>
+      </v-row>
+      <v-row dense>
+        <v-col>
+          <v-select
+            label="議論タイム"
+            v-model="discussionSeconds"
+            :items="discussionSecondsList" />
         </v-col>
       </v-row>
       <v-row dense>

@@ -18,6 +18,7 @@ model User {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now())
   userActions UserAction[]
+  votes       Vote[]
 }
 
 model AltUser {
@@ -49,6 +50,7 @@ model Game {
   maxMembers        Int
   password          String
   discussionSeconds Int             @default(180)
+  timeLimit         DateTime        @default(now())
   status            GameStatusTytpe @default(OPENED)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @default(now())
@@ -84,16 +86,29 @@ model Action {
   game        Game         @relation(fields: [gameId], references: [id])
   type        ActionType
   userActions UserAction[]
+  timeLimit   DateTime     @default(now())
   createdAt   DateTime     @default(now())
 }
 
 model UserAction {
-  id        Int     @id @default(autoincrement())
-  actionId  Int
-  action    Action  @relation(fields: [actionId], references: [id])
-  gameId    Int
-  game      Game    @relation(fields: [gameId], references: [id])
-  userId    Int
-  user      User    @relation(fields: [userId], references: [id])
+  id       Int    @id @default(autoincrement())
+  actionId Int
+  action   Action @relation(fields: [actionId], references: [id])
+  gameId   Int
+  game     Game   @relation(fields: [gameId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  voteId Int?
+  vote   Vote? @relation(fields: [voteId], references: [id])
+
   completed Boolean
+}
+
+model Vote {
+  id          Int          @id @default(autoincrement())
+  userAction  UserAction[]
+  votedUserId Int
+  votedUser   User         @relation(fields: [votedUserId], references: [id])
 }

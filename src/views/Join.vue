@@ -16,7 +16,7 @@ onMounted(async () => {
     const res = await api.getMyGame()
     if (res.data.exists) {
       toast.info('開いたまま終了していないゲームがあったため、移動しました')
-      router.push(`/games/${res.data.gameName}`)
+      router.replace(`/games/${res.data.gameName}`)
       return
     }
   } catch (err: any) {

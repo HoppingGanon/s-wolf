@@ -9,7 +9,7 @@ import {
   PostJoinGameRequest,
   PostGameResponse,
   PutInputRequest,
-  CheckedResponse,
+  PutVoteRequest,
 } from '../../prisma/apimodel'
 import store from './store'
 
@@ -61,14 +61,20 @@ export class Api {
     title: string,
     password: string,
     memberCount: number,
-    finnalyReleasing: boolean
+    finnalyReleasing: boolean,
+    discussionSeconds: number
   ) {
     return this.axios.post<PostGameResponse>('/game', {
-      title: title,
-      memberCount: memberCount,
-      password: password,
-      finnalyReleasing: finnalyReleasing,
+      title,
+      memberCount,
+      password,
+      finnalyReleasing,
+      discussionSeconds,
     } as PostGameRequest)
+  }
+
+  deleteCancelGame(name: string) {
+    return this.axios.delete<PostGameResponse>(`/game/${name}/cancel`)
   }
 
   getMyGame() {
@@ -97,6 +103,12 @@ export class Api {
     return this.axios.put(`/game/${gameName}/input`, {
       word,
     } as PutInputRequest)
+  }
+
+  putVote(gameName: string, userCode: string) {
+    return this.axios.put(`/game/${gameName}/vote`, {
+      userCode,
+    } as PutVoteRequest)
   }
 }
 

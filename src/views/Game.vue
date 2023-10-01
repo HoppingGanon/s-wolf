@@ -13,8 +13,17 @@ import 'vue3-toastify/dist/index.css'
 const route = useRoute()
 
 const passForm = ref()
+const judgeForm = ref()
 const gameName = ref('')
 const word = ref('')
+const timer = ref(0)
+const timerStr = computed(
+  () =>
+    `${('00' + Math.floor(timer.value / 60)).slice(-2)}:${(
+      '00' +
+      (timer.value % 60)
+    ).slice(-2)}`
+)
 
 const state = ref<ActionType | 'UNAUTH' | 'LOADING' | 'INPUTED'>('LOADING')
 const game = ref<GetGameResponse>({
@@ -32,6 +41,7 @@ const game = ref<GetGameResponse>({
 
   userActions: [],
   currentAction: 'READY',
+  actionTimeLimit: 0,
 })
 const password = ref('')
 
@@ -39,10 +49,18 @@ const checkGame = async () => {
   try {
     const res = await api.getGame(gameName.value)
     if (!res.data.opened) {
+      clearInterval(job.value)
       toast.error(res.data.message)
       router.push('/')
       return
     }
+
+    // 2秒以上乖離したらタイマー同期
+    timer.value =
+      Math.abs(timer.value - res.data.actionTimeLimit) >= 2
+        ? res.data.actionTimeLimit
+        : timer.value
+
     game.value = res.data
     state.value = game.value.currentAction || 'READY'
   } catch (err: any) {
@@ -53,14 +71,26 @@ const checkGame = async () => {
 
 const job = ref(
   setInterval(async () => {
-    if (['READY', 'INPUT'].includes(state.value)) {
+    if (
+      ['READY', 'INPUT', 'DISCUSSION', 'JUDGEMENT', 'EXECUTION'].includes(
+        state.value
+      )
+    ) {
       await checkGame()
     }
   }, 2000)
 )
+const jobSec = ref(
+  setInterval(async () => {
+    if (timer.value > 0) {
+      timer.value--
+    }
+  }, 1000)
+)
 onBeforeRouteLeave(() => {
   // ページを離れる際に定期実行処理を削除
   clearInterval(job.value)
+  clearInterval(jobSec.value)
 })
 
 onMounted(async () => {
@@ -120,6 +150,14 @@ const join = async () => {
   }
 }
 
+const closeDialog = ref(false)
+const close = async () => {
+  api
+    .deleteCancelGame(gameName.value)
+    .then(() => {})
+    .catch(() => {})
+}
+
 const start = async () => {
   try {
     await api.postStartAction(gameName.value)
@@ -138,6 +176,7 @@ const input = async () => {
   }
 }
 
+// INPUTとJUDGEMENTで使用
 const inputed = computed(() =>
   game.value.userActions
     ? game.value.userActions.filter(
@@ -145,6 +184,22 @@ const inputed = computed(() =>
       ).length !== 0
     : false
 )
+
+const votedUser = ref<string | undefined>(undefined)
+const judge = async () => {
+  if (judgeForm.value) {
+    const result = await judgeForm.value.validate()
+    if (result.valid) {
+      try {
+        await api.putVote(gameName.value, votedUser.value || '')
+        await checkGame()
+      } catch (err: any) {
+        toast.error(err.response?.data?.message)
+        router.push(`/join-game`)
+      }
+    }
+  }
+}
 </script>
 
 <template>
@@ -164,8 +219,9 @@ const inputed = computed(() =>
         </v-col>
       </v-row>
       <v-row>
-        <v-col>
-          <v-btn @click="join"> 参加 </v-btn>
+        <v-col class="d-flex justify-end">
+          <v-btn to="/join-game"> キャンセル </v-btn>
+          <v-btn color="primary" class="ml-1" @click="join"> 参加 </v-btn>
         </v-col>
       </v-row>
     </v-form>
@@ -202,6 +258,11 @@ const inputed = computed(() =>
     </v-row>
     <v-row>
       <v-col>
+        残り時間: <b>{{ timerStr }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
         <v-list>
           <v-list-item v-for="(u, i) of game.users" :key="i">
             ・ {{ u.name }}
@@ -210,18 +271,39 @@ const inputed = computed(() =>
         </v-list>
       </v-col>
     </v-row>
-    <v-row>
+    <v-row
+      v-if="
+        !(
+          game.users !== undefined &&
+          game.users.length >= 3 &&
+          game.hostUser?.code === store.code
+        )
+      ">
       <v-col>
+        <div>
+          <span> ※3人以上集まればホストの操作で開始できます </span>
+        </div>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col class="d-flex justify-end">
+        <v-btn
+          v-if="game.hostUser?.code === store.code"
+          color="grey"
+          @click="closeDialog = true">
+          強制終了
+        </v-btn>
         <v-btn
           v-if="
             game.users !== undefined &&
             game.users.length >= 3 &&
             game.hostUser?.code === store.code
           "
-          @click="start">
+          color="primary"
+          @click="start"
+          class="ml-1">
           開始
         </v-btn>
-        <span v-else> ※3人以上集まればホストの操作で開始できます </span>
       </v-col>
     </v-row>
   </default-card>
@@ -237,6 +319,16 @@ const inputed = computed(() =>
         </v-col>
       </v-row>
       <v-row>
+        <v-col>
+          ゲームID: <b>{{ game.name }}</b>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col>
+          残り時間: <b>{{ timerStr }}</b>
+        </v-col>
+      </v-row>
+      <v-row>
         <v-col v-if="inputed"> 他参加者の入力完了をお待ちください </v-col>
         <v-col v-else> タイトルに沿って狼ワードを入力してください </v-col>
       </v-row>
@@ -245,7 +337,7 @@ const inputed = computed(() =>
           <v-progress-linear indeterminate color="primary" />
         </v-col>
       </v-row>
-      <v-row v-else>
+      <v-row v-if="!inputed">
         <v-col>
           <v-text-field
             label="狼ワード"
@@ -254,11 +346,166 @@ const inputed = computed(() =>
         </v-col>
       </v-row>
       <v-row class="py-3">
-        <v-col> 残り時間 </v-col>
-        <v-col v-if="!inputed" class="d-flex justify-end">
-          <v-btn @click="input" color="primary"> 送信 </v-btn>
+        <v-col class="d-flex justify-end">
+          <v-btn
+            v-if="game.hostUser?.code === store.code"
+            color="grey"
+            @click="closeDialog = true">
+            強制終了
+          </v-btn>
+          <v-btn v-if="!inputed" @click="input" color="primary" class="ml-1">
+            送信
+          </v-btn>
         </v-col>
       </v-row>
     </v-form>
   </default-card>
+
+  <default-card
+    v-if="state === 'DISCUSSION'"
+    title="議論タイム"
+    style="margin-top: 100px">
+    <v-row>
+      <v-col>
+        タイトル: <b>{{ game.title }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        ゲームID: <b>{{ game.name }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        残り時間: <b>{{ timerStr }}</b>
+      </v-col>
+    </v-row>
+    <v-row class="py-3">
+      <v-col class="d-flex justify-center">
+        <v-progress-circular
+          :model-value="(100 * timer) / (game.discussionSeconds || 1)"
+          color="primary"
+          :size="100"
+          :width="15" />
+      </v-col>
+    </v-row>
+    <v-row class="py-3">
+      <v-col v-if="!inputed" class="d-flex justify-end">
+        <v-btn
+          v-if="game.hostUser?.code === store.code"
+          color="grey"
+          @click="closeDialog = true">
+          強制終了
+        </v-btn>
+      </v-col>
+    </v-row>
+  </default-card>
+
+  <v-form ref="judgeForm">
+    <default-card
+      v-if="state === 'JUDGEMENT'"
+      title="投票タイム"
+      style="margin-top: 100px">
+      <v-row>
+        <v-col>
+          タイトル: <b>{{ game.title }}</b>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col>
+          ゲームID: <b>{{ game.name }}</b>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col>
+          残り時間: <b>{{ timerStr }}</b>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col v-if="inputed"> 他参加者の投票完了をお待ちください </v-col>
+        <v-col v-else> 狼ワードを指定したと思う人に投票してください </v-col>
+      </v-row>
+      <v-row v-if="!inputed">
+        <v-col>
+          <v-select
+            v-model="votedUser"
+            required
+            :items="
+              (game.users || [])
+                .filter((u) => u.code !== store.code)
+                .map((u) => {
+                  return { title: u.name, value: u.code }
+                })
+            " />
+        </v-col>
+      </v-row>
+      <v-row class="py-3">
+        <v-col class="d-flex justify-end">
+          <v-btn v-if="!inputed" color="primary" @click="judge"> 投票 </v-btn>
+          <v-btn
+            v-if="game.hostUser?.code === store.code"
+            color="grey"
+            @click="closeDialog = true">
+            強制終了
+          </v-btn>
+        </v-col>
+      </v-row>
+    </default-card>
+  </v-form>
+
+  <default-card
+    v-if="state === 'EXECUTION'"
+    title="投票結果"
+    style="margin-top: 100px">
+    <v-row>
+      <v-col>
+        タイトル: <b>{{ game.title }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        ゲームID: <b>{{ game.name }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        残り時間: <b>{{ timerStr }}</b>
+      </v-col>
+    </v-row>
+    <v-row v-if="!inputed">
+      <v-select
+        v-model="votedUser"
+        :items="
+          (game.users || [])
+            .filter((u) => u.code !== store.code)
+            .map((u) => {
+              return { title: u.name, value: u.code }
+            })
+        " />
+    </v-row>
+    <v-row class="py-3">
+      <v-col class="d-flex justify-end">
+        <v-btn v-if="!inputed" color="primary" @click="judge"> 投票 </v-btn>
+        <v-btn
+          v-if="game.hostUser?.code === store.code"
+          color="grey"
+          @click="closeDialog = true">
+          強制終了
+        </v-btn>
+      </v-col>
+    </v-row>
+  </default-card>
+
+  <v-dialog v-model="closeDialog">
+    <v-card>
+      <v-card-title> 強制終了 </v-card-title>
+      <v-card-text>
+        ホストユーザーの権限でゲームを強制終了しますか？
+      </v-card-text>
+      <v-card-actions class="d-flex justify-end">
+        <v-btn @click="closeDialog = false"> キャンセル </v-btn>
+        <v-btn color="primary" @click="close" dark> 強制終了 </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>

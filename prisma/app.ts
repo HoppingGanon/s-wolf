@@ -1,22 +1,26 @@
 import express, { Response, Request } from 'express'
 import crypto from 'crypto'
-import { ActionType, Game, GameStatusTytpe, User } from '@prisma/client'
+import { ActionType, Game, GameStatusTytpe } from '@prisma/client'
 import {
-  AltUserRequest,
+  MAX_OPENED_GAME_MINUTES,
+  LIMIT_READY_SECONDS,
+  LIMIT_INPUT_SECONDS,
+  LIMIT_JUDGEMENT_SECONDS,
+  // LIMIT_PLOT_SECONDS,
   ErrorResponse,
   GameUserData,
   GetGameResponse,
   MyGameResponse,
   PostGameRequest,
   PostGameResponse,
-  PostUserRequest,
   PostLogin,
   UserActionData,
   PostJoinGameRequest,
   PutInputRequest,
   CheckedResponse,
+  PutVoteRequest,
+  LIMIT_EXECUTION_SECONDS,
 } from './apimodel'
-import mail from './mail'
 import {
   baseRule,
   memberCountRule,
@@ -24,104 +28,17 @@ import {
   requiredRule,
   valid,
 } from '../shared/rules'
-import jwt from 'jsonwebtoken'
-import fs from 'fs'
 import prisma from './prisma'
-
-const TOKEN_LIFE_MINUTES = 2880
-const MAX_OPENED_GAME_MINUTES = 30
-const LIMIT_READY_SECONDS = 180
-const LIMIT_INPUT_SECONDS = 180
-const LIMIT_JUDGEMENT_SECONDS = 120
-const LIMIT_PLOT_SECONDS = 120
+import {
+  createRandomChars,
+  createToken,
+  digestMessage,
+  verifyToken,
+} from './api/helper'
 
 const app = express()
 
-const privateKey = fs.readFileSync('prisma/private.key')
-
-/**
- * 文字列をハッシュ化する処理
- * 参考: https://www.datacurrent.co.jp/column/jssha256-20211222
- */
-function digestMessage(message: string, salt: string) {
-  return new Promise((resolve: (v: string) => void) => {
-    var msgUint8 = new TextEncoder().encode(
-      message + process.env.PASSWORD_SALT + salt
-    )
-    crypto.subtle.digest('SHA-256', msgUint8).then(function (hashBuffer) {
-      var hashArray = Array.from(new Uint8Array(hashBuffer))
-      var hashHex = hashArray
-        .map(function (b) {
-          return b.toString(16).padStart(2, '0')
-        })
-        .join('')
-      return resolve(hashHex)
-    })
-  })
-}
-
-function createToken(code: string) {
-  return jwt.sign({ code: code }, privateKey, {
-    algorithm: 'HS256',
-    expiresIn: `${TOKEN_LIFE_MINUTES}m`,
-  })
-}
-
-function write401(res: Response, code: string, mes?: string) {
-  res.status(401)
-  res.json({
-    code: `token-${code}`,
-    message: mes || 'トークンが不正です',
-  } as ErrorResponse)
-}
-
-function createRandomChars(cnt: number) {
-  let s = ''
-  for (let i = 0; i < cnt; i++) {
-    s += crypto.randomInt(0, 32).toString(32)
-  }
-  return s
-}
-
-async function verifyToken(req: Request, res: Response) {
-  try {
-    if (!req.headers.authorization || req.headers.authorization.length < 5) {
-      write401(res, '001', 'トークンがありません')
-      return false
-    }
-    if (req.headers.authorization.substring(0, 4) !== 'jwt:') {
-      write401(res, '002')
-      return false
-    }
-
-    const token = req.headers.authorization.substring(4)
-
-    const decoded = jwt.decode(token)
-    if (decoded && typeof decoded !== 'string' && decoded.exp) {
-      if (decoded.exp < new Date().getTime() / 1000) {
-        write401(res, '003', 'トークンが期限切れです')
-        return false
-      }
-    }
-    const payload = jwt.verify(token, privateKey) as { code: string }
-
-    const user = await prisma.user.findFirst({
-      where: {
-        code: payload.code,
-      },
-    })
-    if (user === null) {
-      write401(res, '004')
-      return false
-    } else {
-      return user
-    }
-  } catch (err) {
-    write401(res, '005')
-    return false
-  }
-}
-
+// デフォルトエラー処理 エラー処理されていないエラーが発生した場合に実行する処理
 app.use((err: any, _req: Request, res: Response, _next: any) => {
   console.error(err.stack)
   res.status(500).send("I'll be Internal Server Error!!!(Don!)")
@@ -143,206 +60,6 @@ app.use((req, res, next) => {
   }
 })
 app.use(express.json())
-
-app.post<any, any, any, AltUserRequest>('/temp/users', async (_req, res) => {
-  const address = _req.body.mailaddress
-
-  if (
-    (await prisma.user.count({
-      where: {
-        mailaddress: address,
-      },
-    })) > 0
-  ) {
-    res.status(400)
-    res.json({
-      code: 'temp/user-001',
-      message: '既に登録済みのアドレスです',
-    } as ErrorResponse)
-    return
-  }
-
-  if (
-    (await prisma.altUser.count({
-      where: {
-        mailaddress: address,
-      },
-    })) > 0
-  ) {
-    // 代替ユーザー有り
-    try {
-      await prisma.altUser.deleteMany({
-        where: {
-          mailaddress: address,
-        },
-      })
-    } catch {
-      res.status(400)
-      res.json({
-        code: 'temp/user-002',
-        message: '仮登録ユーザーの削除に失敗しました',
-      } as ErrorResponse)
-      return
-    }
-  }
-
-  const code = crypto.randomUUID()
-
-  try {
-    await mail.send(
-      address,
-      's-wolf 仮登録',
-      `
-s-wolfへようこそ
-
-現在仮登録状態です。
-以下のリンクをクリックすると、本登録が完了します。
-${process.env.VITE_APP_FRONT_BASE_URL}/resist/temp/${code}
-
---------------------------------------------------
-s-wolf運営 ほっぴんぐがのん
-
-Twitter...じゃなくてX(笑): @hoppingganonapp
-email: hoppingganon@gmail.com
---------------------------------------------------
-`
-    )
-  } catch (err) {
-    console.log(err)
-    res.status(400)
-    res.json({
-      code: 'temp/user-003',
-      message: 'メール送信に失敗しました',
-    } as ErrorResponse)
-    return
-  }
-
-  await prisma.altUser
-    .create({
-      data: {
-        id: undefined,
-        mailaddress: address,
-        resistCode: code,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    })
-    .then(() => {
-      res.status(201)
-      res.json()
-    })
-    .catch((err) => {
-      console.log(err)
-      res.status(400)
-      res.json({
-        code: 'temp/user-004',
-        message: '仮ユーザーの作成に失敗しました',
-      } as ErrorResponse)
-    })
-})
-
-app.post<any, any, any, PostUserRequest>('/users', async (_req, res) => {
-  const name = _req.body.name
-  const password = _req.body.password
-  const code = _req.body.code
-
-  if (_req.body.password_retype !== password) {
-    res.status(400)
-    res.json({
-      code: 'user-001',
-      message: 'パスワードが一致しません',
-    } as ErrorResponse)
-    return
-  }
-
-  let result = valid(name, [requiredRule, baseRule])
-  if (result !== true) {
-    res.status(400)
-    res.json({
-      code: 'user-002',
-      message: result,
-    } as ErrorResponse)
-    return
-  }
-
-  result = valid(password, [requiredRule, passwordRule])
-  if (result !== true) {
-    res.status(400)
-    res.json({
-      code: 'user-003',
-      message: result,
-    } as ErrorResponse)
-    return
-  }
-
-  const altUser = await prisma.altUser.findFirst({
-    where: {
-      resistCode: code,
-    },
-  })
-
-  if (altUser == null) {
-    res.status(400)
-    res.json({
-      code: 'user-004',
-      message: '仮登録データが存在しません',
-    } as ErrorResponse)
-    return
-  }
-
-  let user: User | undefined = undefined
-  try {
-    user = await prisma.user.create({
-      data: {
-        id: undefined,
-        code: crypto.randomUUID(),
-        games: undefined,
-        hostGame: undefined,
-        name: name,
-        password: '',
-        mailaddress: altUser.mailaddress,
-        createdAt: undefined,
-        updatedAt: undefined,
-      },
-    })
-    await prisma.user.update({
-      data: {
-        password: await digestMessage(password, '' + user.id),
-      },
-      where: {
-        id: user.id,
-      },
-    })
-  } catch {
-    res.status(400)
-    res.json({
-      code: 'user-005',
-      message: 'ユーザーの作成に失敗しました',
-    } as ErrorResponse)
-  }
-
-  try {
-    await prisma.altUser.deleteMany({
-      where: {
-        resistCode: code,
-      },
-    })
-  } catch {
-    res.status(400)
-    res.json({
-      code: 'user-006',
-      message: 'ユーザーの作成に失敗しました',
-    } as ErrorResponse)
-  }
-
-  res.status(201)
-  res.json({
-    token:
-      'jwt:' +
-      createToken(user ? user.code : 'error-jwt=' + crypto.randomUUID()),
-    code: user ? user.code : 'error-id',
-  } as PostLogin)
-})
 
 app.get('/login', async (_req, res) => {
   const mailaddress =
@@ -421,6 +138,7 @@ app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
   const password = _req.body.password
   const memberCount = _req.body.memberCount
   const finnalyReleasing = _req.body.finnalyReleasing
+  const discussionSeconds = _req.body.discussionSeconds
 
   const user = await verifyToken(_req, res)
   if (user === false) {
@@ -463,21 +181,20 @@ app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
   }
 
   try {
+    let timeLimit = new Date()
+    timeLimit.setMinutes(timeLimit.getMinutes() + MAX_OPENED_GAME_MINUTES)
     await prisma.$transaction(async (prisma) => {
       const game = await prisma.game.create({
         data: {
-          id: undefined,
           gameName: gameName,
           gameTitle: title,
           hostUserId: user.id,
           password: await digestMessage(password, gameName),
-          hostUser: undefined,
-          users: undefined,
-          createdAt: undefined,
-          updatedAt: undefined,
           finnalyReleasing: finnalyReleasing,
           maxMembers: memberCount,
-          actions: undefined,
+          timeLimit: timeLimit,
+          discussionSeconds: discussionSeconds,
+          status: 'OPENED',
         },
       })
 
@@ -488,17 +205,20 @@ app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
           gameId: game.id,
           game: undefined,
           fetishism: '',
+          isDied: false,
         },
       })
 
       data.game = game
-
+      timeLimit = new Date()
+      timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_READY_SECONDS)
       await prisma.action.create({
         data: {
           id: undefined,
           type: 'READY',
           gameId: game.id,
           game: undefined,
+          timeLimit: timeLimit,
         },
       })
     })
@@ -542,10 +262,32 @@ app.get('/my-game', async (_req, res) => {
     },
   })
 
+  if (game) {
+    const action = await prisma.action.findFirst({
+      where: {
+        gameId: game.id,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    })
+    if (action) {
+      const chk = await checkGame(game, action)
+      if (!chk.opened) {
+        res.status(200)
+        res.json({
+          exists: false,
+          gameName: undefined,
+        } as MyGameResponse)
+        return
+      }
+    }
+  }
+
   res.status(200)
   res.json({
     exists: !!game,
-    gameName: game ? game.gameName : undefined,
+    gameName: game?.gameName,
   } as MyGameResponse)
   return
 })
@@ -554,10 +296,10 @@ async function checkGame(
   game: {
     id: number
     status: GameStatusTytpe
-    discussionSeconds: number
     createdAt: Date
+    timeLimit: Date
   },
-  action: { id: number; type: ActionType; createdAt: Date }
+  action: { id: number; type: ActionType; createdAt: Date; timeLimit: Date }
 ): Promise<CheckedResponse> {
   switch (game.status) {
     case 'OPENED':
@@ -588,10 +330,7 @@ async function checkGame(
         message: 'ゲームは異常終了しました',
       }
   }
-  let timelimit = new Date()
-  timelimit.setMinutes(timelimit.getMinutes() - MAX_OPENED_GAME_MINUTES)
-
-  if (game.createdAt < timelimit) {
+  if (game.timeLimit < new Date()) {
     await prisma.game
       .update({
         where: {
@@ -610,51 +349,75 @@ async function checkGame(
     }
   }
 
-  timelimit = new Date()
+  if (action.timeLimit < new Date()) {
+    if (action.type === 'DISCUSSION') {
+      await prisma.$transaction(async (prisma) => {
+        const foundGame = await prisma.game.findFirst({
+          where: {
+            id: game.id,
+          },
+          include: {
+            users: true,
+          },
+        })
+        if (!foundGame) {
+          // ここには来ないはず
+          return {
+            opened: false,
+            message: 'ユーザーが見つかりません',
+          }
+        }
 
-  switch (action.type) {
-    case 'READY':
-      timelimit.setSeconds(timelimit.getSeconds() - LIMIT_READY_SECONDS)
-      break
-    case 'INPUT':
-      timelimit.setSeconds(timelimit.getSeconds() - LIMIT_INPUT_SECONDS)
-      break
-    case 'DISCUSSION':
-      timelimit.setSeconds(timelimit.getSeconds() - game.discussionSeconds)
-      break
-    case 'JUDGEMENT':
-      timelimit.setSeconds(timelimit.getSeconds() - LIMIT_JUDGEMENT_SECONDS)
-      break
-    case 'PLOT':
-      timelimit.setSeconds(timelimit.getSeconds() - LIMIT_PLOT_SECONDS)
-      break
-    default:
+        const timeLimit = new Date()
+        timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_JUDGEMENT_SECONDS)
+        await prisma.action.create({
+          data: {
+            id: undefined,
+            gameId: game.id,
+            type: 'JUDGEMENT',
+            timeLimit: timeLimit,
+          },
+        })
+
+        for (let u of foundGame.users) {
+          await prisma.userAction.create({
+            data: {
+              id: undefined,
+              gameId: game.id,
+              userId: u.userId,
+              actionId: action.id,
+              // 生きていなければfalse
+              completed: u.isDied,
+            },
+          })
+        }
+      })
+
       return {
         opened: true,
         message: '',
       }
-  }
-
-  if (action.createdAt < timelimit) {
-    await prisma.game
-      .update({
-        where: {
-          id: game.id,
-        },
-        data: {
-          status: 'TIMEUP',
-        },
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-    return {
-      opened: false,
-      message: 'ゲームをタイムアップにより終了します',
+    } else {
+      await prisma.game
+        .update({
+          where: {
+            id: game.id,
+          },
+          data: {
+            status: 'TIMEUP',
+          },
+        })
+        .catch((err) => {
+          console.log(err)
+        })
+      return {
+        opened: false,
+        message: 'ゲームをタイムアップにより終了します',
+      }
     }
   }
   return {
-    opened: false,
+    opened: true,
     message: '',
   }
 }
@@ -776,9 +539,13 @@ const getGameInfo = async (req: Request, res: Response) => {
     users: users,
 
     maxMembers: game.maxMembers,
+    discussionSeconds: game.discussionSeconds,
 
     userActions: userActions,
     currentAction: action.type,
+    actionTimeLimit: Math.floor(
+      (action.timeLimit.valueOf() - new Date().valueOf()) / 1000
+    ),
   }
 
   return {
@@ -954,11 +721,14 @@ app.post('/game/:name/start', async (req, res) => {
   }
 
   await prisma.$transaction(async (prisma) => {
+    const timeLimit = new Date()
+    timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_INPUT_SECONDS)
     const action = await prisma.action.create({
       data: {
         id: undefined,
         gameId: gameObj.game.id,
         type: 'INPUT',
+        timeLimit: timeLimit,
       },
     })
 
@@ -1011,10 +781,8 @@ app.put<any, any, any, PutInputRequest>(
     const ualist = gameObj.action.userActions.filter((ua) => {
       return ua.userId === gameObj.user.id
     })
-    console.log(gameObj.user.id)
-    console.log(gameObj.action.userActions)
     if (ualist.length === 0) {
-      res.status(500)
+      res.status(404)
       res.json({
         code: 'input-003',
         message: 'ユーザーが存在しません',
@@ -1064,7 +832,7 @@ app.put<any, any, any, PutInputRequest>(
       } as ErrorResponse)
     }
 
-    prisma.userAction
+    await prisma.userAction
       .count({
         where: {
           actionId: gameObj.action.id,
@@ -1073,12 +841,21 @@ app.put<any, any, any, PutInputRequest>(
       })
       .then((cnt) => {
         if (gameObj.game.users.length === cnt) {
-          prisma.action.create({
-            data: {
-              type: 'DISCUSSION',
-              gameId: gameObj.game.id,
-            },
-          })
+          const timeLimit = new Date()
+          timeLimit.setSeconds(
+            timeLimit.getSeconds() + gameObj.game.discussionSeconds
+          )
+          prisma.action
+            .create({
+              data: {
+                type: 'DISCUSSION',
+                gameId: gameObj.game.id,
+                timeLimit: timeLimit,
+              },
+            })
+            .catch((err) => {
+              console.log(err)
+            })
         }
       })
       .catch((err) => {
@@ -1086,6 +863,170 @@ app.put<any, any, any, PutInputRequest>(
       })
     res.status(200)
     res.json()
+  }
+)
+
+app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
+  const userCode = '' + req.body.userCode
+
+  const result = valid(userCode, [requiredRule])
+  if (result !== true) {
+    res.status(400)
+    res.json({
+      code: 'judge-001',
+      message: result,
+    } as ErrorResponse)
+    return
+  }
+
+  const gameObj = await getGameInfo(req, res)
+  if (gameObj === null) {
+    return
+  }
+
+  if (gameObj.action.type !== 'JUDGEMENT') {
+    res.status(400)
+    res.json({
+      code: 'judge-002',
+      message: `ゲームの状態が${gameObj.action.type}なため投票できません`,
+    } as ErrorResponse)
+    return
+  }
+
+  const ualist = gameObj.action.userActions.filter((ua) => {
+    return ua.userId === gameObj.user.id
+  })
+  if (ualist.length === 0) {
+    res.status(404)
+    res.json({
+      code: 'judge-003',
+      message: 'ユーザーが存在しません',
+    } as ErrorResponse)
+    return
+  }
+
+  const userAction = ualist[0]
+
+  if (userAction.completed) {
+    res.status(400)
+    res.json({
+      code: 'judge-004',
+      message: 'すでに入力が終了しています',
+    } as ErrorResponse)
+    return
+  }
+
+  const votedGameOnUser = await prisma.gameOnUser.findFirst({
+    where: {
+      user: {
+        code: userCode,
+      },
+      gameId: gameObj.game.id,
+    },
+  })
+
+  if (!votedGameOnUser) {
+    res.status(400)
+    res.json({
+      code: 'judge-005',
+      message: '投票したユーザーはゲーム内に存在しません',
+    } as ErrorResponse)
+    return
+  }
+
+  try {
+    await prisma.$transaction(async (prisma) => {
+      // 投票
+      await prisma.userAction.update({
+        data: {
+          completed: true,
+          vote: {
+            create: {
+              votedUserId: votedGameOnUser.userId,
+            },
+          },
+        },
+        where: {
+          id: userAction.id,
+        },
+      })
+    })
+  } catch {
+    res.status(400)
+    res.json({
+      code: 'judge-006',
+      message: '参加に失敗しました',
+    } as ErrorResponse)
+  }
+
+  await prisma.userAction
+    .count({
+      where: {
+        actionId: gameObj.action.id,
+        completed: true,
+      },
+    })
+    .then((cnt) => {
+      if (gameObj.game.users.length === cnt) {
+        const timeLimit = new Date()
+        timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_EXECUTION_SECONDS)
+        prisma.action
+          .create({
+            data: {
+              type: 'EXECUTION',
+              gameId: gameObj.game.id,
+              timeLimit: timeLimit,
+            },
+          })
+          .catch((err) => {
+            console.log(err)
+          })
+      }
+    })
+    .catch((err) => {
+      console.log(err)
+    })
+  res.status(200)
+  res.json()
+})
+
+app.delete<any, any, any, PutInputRequest>(
+  '/game/:name/cancel',
+  async (req, res) => {
+    const gameObj = await getGameInfo(req, res)
+    if (gameObj === null) {
+      return
+    }
+
+    if (gameObj.user.id !== gameObj.game.hostUserId) {
+      res.status(401)
+      res.json({
+        code: 'cancel-001',
+        message: '終了する権限がありません',
+      } as ErrorResponse)
+      return
+    }
+
+    await prisma.game
+      .update({
+        data: {
+          status: 'CANCEL',
+        },
+        where: {
+          id: gameObj.game.id,
+        },
+      })
+      .then(() => {
+        res.status(204)
+        res.json()
+      })
+      .catch(() => {
+        res.status(500)
+        res.json({
+          code: 'cancel-002',
+          message: 'ゲームを終了できませんでした',
+        } as ErrorResponse)
+      })
   }
 )
 
