@@ -53,6 +53,14 @@ export const getGameInfo = async (req: Request, res: Response) => {
     return null
   }
 
+  let fetishism = ''
+  game.users.forEach((u) => {
+    if (u.isWolf) {
+      fetishism = u.fetishism
+    }
+    u.isWolf = false
+  })
+
   if (game.hostUserId !== user.id) {
     if (game.users.filter((u) => u.userId === user.id).length === 0) {
       // 参加済みユーザー
@@ -127,6 +135,8 @@ export const getGameInfo = async (req: Request, res: Response) => {
       name: game.hostUser.name,
     },
     users: users,
+
+    wolfFetishism: fetishism,
 
     maxMembers: game.maxMembers,
     discussionSeconds: game.discussionSeconds,

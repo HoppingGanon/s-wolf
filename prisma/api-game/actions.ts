@@ -9,6 +9,7 @@ import {
 import { baseRule, requiredRule, valid } from '../../shared/rules'
 import prisma from '../prisma'
 import { getGameInfo } from './helper'
+import crypto from 'crypto'
 
 app.post('/game/:name/start', async (req, res) => {
   const gameObj = await getGameInfo(req, res)
@@ -87,7 +88,7 @@ app.put<any, any, any, PutInputRequest>(
       res.status(400)
       res.json({
         code: 'input-002',
-        message: `ゲームの状態が${gameObj.action.type}なため開始できません`,
+        message: `ゲームの状態が${gameObj.action.type}なため入力できません`,
       } as ErrorResponse)
       return
     }
@@ -146,37 +147,55 @@ app.put<any, any, any, PutInputRequest>(
       } as ErrorResponse)
     }
 
-    await prisma.userAction
-      .count({
+    try {
+      const cnt = await prisma.userAction.count({
         where: {
           actionId: gameObj.action.id,
           completed: true,
         },
       })
-      .then((cnt) => {
-        if (gameObj.game.users.length === cnt) {
-          const timeLimit = new Date()
-          timeLimit.setSeconds(
-            timeLimit.getSeconds() + gameObj.game.discussionSeconds
-          )
-          prisma.action
-            .create({
-              data: {
-                type: 'DISCUSSION',
+      if (gameObj.game.users.length === cnt) {
+        // 全員入力完了
+
+        const turn = await prisma.action.count({
+          where: { gameId: gameObj.game.id },
+        })
+        if (turn < 4) {
+          // 4アクション以下の初期状態なら、人狼決定を行う
+          const wolfIndex = crypto.randomInt(0, gameObj.game.users.length)
+          await prisma.gameOnUser.update({
+            data: {
+              isWolf: true,
+            },
+            where: {
+              userId_gameId: {
                 gameId: gameObj.game.id,
-                timeLimit: timeLimit,
+                userId: gameObj.game.users[wolfIndex].userId,
               },
-            })
-            .catch((err) => {
-              console.log(err)
-            })
+            },
+          })
         }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-    res.status(200)
-    res.json()
+
+        const timeLimit = new Date()
+        timeLimit.setSeconds(
+          timeLimit.getSeconds() + gameObj.game.discussionSeconds
+        )
+
+        await prisma.action.create({
+          data: {
+            type: 'DISCUSSION',
+            gameId: gameObj.game.id,
+            timeLimit: timeLimit,
+          },
+        })
+      }
+    } catch (err) {
+      // ignore
+      console.log(err)
+    } finally {
+      res.status(200)
+      res.json()
+    }
   }
 )
 

@@ -81,6 +81,8 @@ export interface GetGameResponse extends CheckedResponse {
   hostUser?: MaskedUserData
   users?: GameUserData[]
 
+  wolfFetishism: string
+
   currentAction?: ActionType
   actionTimeLimit: number
   userActions?: UserActionData[]

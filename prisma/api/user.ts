@@ -166,6 +166,7 @@ app.post<any, any, any, PostUserRequest>('/users', async (_req, res) => {
         code: crypto.randomUUID(),
         games: undefined,
         hostGame: undefined,
+
         name: name,
         password: '',
         mailaddress: altUser.mailaddress,
