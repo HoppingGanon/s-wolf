@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import DefaultCard from '../components/DefaultCard.vue'
 import { emailRules } from '../../shared/rules'
 import api from '../plugins/api'
-import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
 
 const address = ref('')
@@ -22,9 +21,7 @@ const submit = async () => {
         .then(() => {
           sent.value = true
         })
-        .catch((err) => {
-          toast.error(err.response?.data?.message)
-        })
+        .catch(() => {})
         .finally(() => {
           loading.value = false
         })

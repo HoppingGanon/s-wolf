@@ -9,7 +9,6 @@ app.use((err: any, _req: Request, res: Response, _next: any) => {
 })
 
 // デフォルトヘッダ
-console.log(process.env.ACCESS_CONTROL_ALLOW_ORIGIN)
 app.use((req, res, next) => {
   res.header(
     'Access-Control-Allow-Origin',

@@ -6,7 +6,6 @@ import store from '../plugins/store'
 import { useRoute } from 'vue-router'
 import { baseRule, requiredRule, passwordRule } from '../../shared/rules'
 import router from '../plugins/router'
-import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
 
 const form = ref()
@@ -37,9 +36,7 @@ const submit = async () => {
             router.push('/')
           }, 500)
         })
-        .catch((err) => {
-          toast.error(err.response?.data?.message)
-        })
+        .catch(() => {})
     }
   }
 }

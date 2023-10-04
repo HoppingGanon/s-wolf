@@ -1,4 +1,4 @@
-import express, { Response, Request } from 'express'
+import { Response, Request } from 'express'
 import { verifyToken } from '../api/helper'
 import { baseRule, requiredRule, valid } from '../../shared/rules'
 import {

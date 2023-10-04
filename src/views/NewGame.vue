@@ -21,9 +21,7 @@ onMounted(() => {
         router.replace(`/games/${res.data.gameName}`)
       }
     })
-    .catch((err) => {
-      toast.error(err.response?.data?.message)
-    })
+    .catch(() => {})
 })
 
 const title = ref('')
@@ -64,9 +62,7 @@ const submit = async () => {
         .then((res) => {
           router.push(`/games/${res.data.gameName}`)
         })
-        .catch((res) => {
-          console.log(res.response.data)
-        })
+        .catch(() => {})
     }
   }
 }

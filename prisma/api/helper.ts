@@ -1,6 +1,6 @@
 import fs from 'fs'
 import jwt from 'jsonwebtoken'
-import express, { Response, Request } from 'express'
+import { Response, Request } from 'express'
 import crypto from 'crypto'
 import prisma from '../prisma'
 import { ErrorResponse, TOKEN_LIFE_MINUTES } from '../apimodel'

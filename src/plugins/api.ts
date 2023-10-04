@@ -1,4 +1,4 @@
-import axios, { AxiosStatic } from 'axios'
+import axios, { AxiosRequestConfig, AxiosResponse, AxiosStatic } from 'axios'
 import {
   AltUserRequest,
   GetGameResponse,
@@ -12,6 +12,11 @@ import {
   PutVoteRequest,
 } from '../../prisma/apimodel'
 import store from './store'
+import { toast } from 'vue3-toastify'
+
+export interface ApiOptions {
+  hideToast?: boolean
+}
 
 export class Api {
   axios: AxiosStatic
@@ -22,6 +27,104 @@ export class Api {
     this.setHeader()
   }
 
+  async get<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    config?: AxiosRequestConfig<D> | undefined,
+    options?: ApiOptions
+  ): Promise<R> {
+    return await new Promise((resolve, reject) => {
+      axios
+        .get<T, R, D>(url, config)
+        .then((response) => {
+          resolve(response)
+        })
+        .catch((err) => {
+          if (!options?.hideToast) {
+            toast.error(
+              err.data?.response?.message ||
+                err.message ||
+                'エラーが発生しました'
+            )
+          }
+          reject(err)
+        })
+    })
+  }
+
+  async delete<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    config?: AxiosRequestConfig<D> | undefined,
+    options?: ApiOptions
+  ): Promise<R> {
+    return await new Promise((resolve, reject) => {
+      axios
+        .delete<T, R, D>(url, config)
+        .then((response) => {
+          resolve(response)
+        })
+        .catch((err) => {
+          if (!options?.hideToast) {
+            toast.error(
+              err.data?.response?.message ||
+                err.message ||
+                'エラーが発生しました'
+            )
+          }
+          reject(err)
+        })
+    })
+  }
+
+  async put<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    data?: D | undefined,
+    config?: AxiosRequestConfig<D> | undefined,
+    options?: ApiOptions
+  ): Promise<R> {
+    return await new Promise((resolve, reject) => {
+      axios
+        .put<T, R, D>(url, data, config)
+        .then((response) => {
+          resolve(response)
+        })
+        .catch((err) => {
+          if (!options?.hideToast) {
+            toast.error(
+              err.data?.response?.message ||
+                err.message ||
+                'エラーが発生しました'
+            )
+          }
+          reject(err)
+        })
+    })
+  }
+
+  async post<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    data?: D | undefined,
+    config?: AxiosRequestConfig<D> | undefined,
+    options?: ApiOptions
+  ): Promise<R> {
+    return await new Promise((resolve, reject) => {
+      axios
+        .post<T, R, D>(url, data, config)
+        .then((response) => {
+          resolve(response)
+        })
+        .catch((err) => {
+          if (!options?.hideToast) {
+            toast.error(
+              err.data?.response?.message ||
+                err.message ||
+                'エラーが発生しました'
+            )
+          }
+          reject(err)
+        })
+    })
+  }
+
   setHeader() {
     this.axios.defaults.headers.common = {
       Authorization: store.token,
@@ -29,7 +132,7 @@ export class Api {
   }
 
   postTempUser(mailaddress: string) {
-    return this.axios.post('/temp/users', {
+    return this.post('/temp/users', {
       mailaddress: mailaddress,
     } as AltUserRequest)
   }
@@ -40,7 +143,7 @@ export class Api {
     password: string,
     passwordRetype: string
   ) {
-    return this.axios.post<PostLogin>('/users', {
+    return this.post<PostLogin>('/users', {
       code: code,
       name: name,
       password: password,
@@ -49,7 +152,7 @@ export class Api {
   }
 
   getLogin(mailaddress: string, password: string) {
-    return this.axios.get<PostLogin>('/login', {
+    return this.get<PostLogin>('/login', {
       params: {
         mailaddress: mailaddress,
         password: password,
@@ -64,7 +167,7 @@ export class Api {
     finnalyReleasing: boolean,
     discussionSeconds: number
   ) {
-    return this.axios.post<PostGameResponse>('/game', {
+    return this.post<PostGameResponse>('/game', {
       title,
       memberCount,
       password,
@@ -74,39 +177,39 @@ export class Api {
   }
 
   deleteCancelGame(name: string) {
-    return this.axios.delete<PostGameResponse>(`/game/${name}/cancel`)
+    return this.delete<PostGameResponse>(`/game/${name}/cancel`)
   }
 
   getMyGame() {
-    return this.axios.get<MyGameResponse>('/my-game')
+    return this.get<MyGameResponse>('/my-game', undefined)
   }
 
-  getGame(name: string) {
-    return this.axios.get<GetGameResponse>(`/game/${name}`)
+  getGame(name: string, options?: ApiOptions) {
+    return this.get<GetGameResponse>(`/game/${name}`, undefined, options)
   }
 
   postJoinGame(name: string, password: string) {
-    return this.axios.post(`/game/${name}/join`, {
+    return this.post(`/game/${name}/join`, {
       password: password,
     } as PostJoinGameRequest)
   }
 
   getLoginCheck() {
-    return this.axios.get<PostLogin>('/login/check')
+    return this.get<PostLogin>('/login/check')
   }
 
   postStartAction(gameName: string) {
-    return this.axios.post(`/game/${gameName}/start`)
+    return this.post(`/game/${gameName}/start`)
   }
 
   putInputWord(gameName: string, word: string) {
-    return this.axios.put(`/game/${gameName}/input`, {
+    return this.put(`/game/${gameName}/input`, {
       word,
     } as PutInputRequest)
   }
 
   putVote(gameName: string, userCode: string) {
-    return this.axios.put(`/game/${gameName}/vote`, {
+    return this.put(`/game/${gameName}/vote`, {
       userCode,
     } as PutVoteRequest)
   }

@@ -111,7 +111,7 @@ onMounted(async () => {
 
   if (typeof route.params.name === 'string') {
     await api
-      .getGame(route.params.name)
+      .getGame(route.params.name, { hideToast: true })
       .then((res) => {
         if (!res.data.opened) {
           toast.error(res.data.message)
@@ -123,7 +123,6 @@ onMounted(async () => {
       })
       .catch((err) => {
         if (err.response?.status === 404) {
-          toast.error(err.response.data.message)
           router.push('/join-game')
         } else {
           state.value = 'UNAUTH'
@@ -195,7 +194,6 @@ const judge = async () => {
         await checkGame()
       } catch (err: any) {
         toast.error(err.response?.data?.message)
-        router.push(`/join-game`)
       }
     }
   }
