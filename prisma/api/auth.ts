@@ -3,6 +3,7 @@ import { ErrorResponse, PostLogin } from '../apimodel'
 import app from '../app'
 import prisma from '../prisma'
 import { createToken, digestMessage } from './helper'
+import crypto from 'crypto'
 
 app.get('/login', async (_req, res) => {
   const mailaddress =

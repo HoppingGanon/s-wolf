@@ -91,7 +91,7 @@ export const getGameInfo = async (req: Request, res: Response) => {
     return null
   }
 
-  const checked = await checkGame(game, action)
+  const checked = await checkGame(game, action, user)
 
   if (!checked.opened) {
     res.status(200)
@@ -152,8 +152,12 @@ export async function checkGame(
     status: GameStatusTytpe
     createdAt: Date
     timeLimit: Date
+    hostUserId: number
   },
-  action: { id: number; type: ActionType; createdAt: Date; timeLimit: Date }
+  action: { id: number; type: ActionType; createdAt: Date; timeLimit: Date },
+  requestUser: {
+    id: number
+  }
 ): Promise<CheckedResponse> {
   switch (game.status) {
     case 'OPENED':
@@ -185,6 +189,7 @@ export async function checkGame(
       }
   }
   if (game.timeLimit < new Date()) {
+    // ゲームそのもののタイムリミット
     await prisma.game
       .update({
         where: {
@@ -205,51 +210,61 @@ export async function checkGame(
 
   if (action.timeLimit < new Date()) {
     if (action.type === 'DISCUSSION') {
-      await prisma.$transaction(async (prisma) => {
-        const foundGame = await prisma.game.findFirst({
-          where: {
-            id: game.id,
-          },
-          include: {
-            users: true,
-          },
-        })
-        if (!foundGame) {
-          // ここには来ないはず
-          return {
-            opened: false,
-            message: 'ユーザーが見つかりません',
-          }
+      if (game.hostUserId !== requestUser.id) {
+        // ホスト以外なら何もしない
+        return {
+          opened: true,
+          message: '',
         }
+      } else {
+        // ホストの場合
+        // 議論タイムのタイムアップはアクションの遷移
+        await prisma.$transaction(async (prisma) => {
+          const foundGame = await prisma.game.findFirst({
+            where: {
+              id: game.id,
+            },
+            include: {
+              users: true,
+            },
+          })
+          if (!foundGame) {
+            // ここには来ないはず
+            return {
+              opened: false,
+              message: 'ユーザーが見つかりません',
+            }
+          }
 
-        const timeLimit = new Date()
-        timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_JUDGEMENT_SECONDS)
-        await prisma.action.create({
-          data: {
-            id: undefined,
-            gameId: game.id,
-            type: 'JUDGEMENT',
-            timeLimit: timeLimit,
-          },
-        })
-
-        for (let u of foundGame.users) {
-          await prisma.userAction.create({
+          const timeLimit = new Date()
+          timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_JUDGEMENT_SECONDS)
+          const newAction = await prisma.action.create({
             data: {
               id: undefined,
               gameId: game.id,
-              userId: u.userId,
-              actionId: action.id,
-              // 生きていなければfalse
-              completed: u.isDied,
+              type: 'JUDGEMENT',
+              timeLimit: timeLimit,
             },
           })
-        }
-      })
 
-      return {
-        opened: true,
-        message: '',
+          for (let u of foundGame.users) {
+            await prisma.userAction.create({
+              data: {
+                id: undefined,
+                gameId: game.id,
+                userId: u.userId,
+                actionId: newAction.id,
+                // 生きていなければfalse
+                completed: u.isDied,
+              },
+            })
+          }
+        })
+
+        return {
+          opened: true,
+          message: '',
+        }
       }
     } else {
       await prisma.game

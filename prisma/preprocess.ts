@@ -12,6 +12,4 @@ if (existsSync(lpath)) {
   dotenv.config({
     path: ppath,
   })
-} else {
-  throw '.envまたは.env.localファイルが存在しません'
 }

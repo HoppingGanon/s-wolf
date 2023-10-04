@@ -10,6 +10,7 @@ import app from '../app'
 import mail from '../mail'
 import prisma from '../prisma'
 import { createToken, digestMessage, verifyToken } from './helper'
+import crypto from 'crypto'
 
 app.post<any, any, any, AltUserRequest>('/temp/users', async (_req, res) => {
   const address = _req.body.mailaddress

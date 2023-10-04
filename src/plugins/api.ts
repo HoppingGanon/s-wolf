@@ -41,7 +41,7 @@ export class Api {
         .catch((err) => {
           if (!options?.hideToast) {
             toast.error(
-              err.data?.response?.message ||
+              err.response?.data?.message ||
                 err.message ||
                 'エラーが発生しました'
             )
@@ -65,7 +65,7 @@ export class Api {
         .catch((err) => {
           if (!options?.hideToast) {
             toast.error(
-              err.data?.response?.message ||
+              err.response?.data?.message ||
                 err.message ||
                 'エラーが発生しました'
             )
@@ -90,7 +90,7 @@ export class Api {
         .catch((err) => {
           if (!options?.hideToast) {
             toast.error(
-              err.data?.response?.message ||
+              err.response?.data?.message ||
                 err.message ||
                 'エラーが発生しました'
             )
@@ -115,7 +115,7 @@ export class Api {
         .catch((err) => {
           if (!options?.hideToast) {
             toast.error(
-              err.data?.response?.message ||
+              err.response?.data?.message ||
                 err.message ||
                 'エラーが発生しました'
             )

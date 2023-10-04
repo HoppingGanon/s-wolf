@@ -84,6 +84,8 @@ const jobSec = ref(
   setInterval(async () => {
     if (timer.value > 0) {
       timer.value--
+    } else {
+      timer.value = 0
     }
   }, 1000)
 )

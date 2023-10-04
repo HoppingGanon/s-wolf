@@ -43,7 +43,7 @@ app.get('/my-game', async (_req, res) => {
       },
     })
     if (action) {
-      const chk = await checkGame(game, action)
+      const chk = await checkGame(game, action, user)
       if (!chk.opened) {
         res.status(200)
         res.json({

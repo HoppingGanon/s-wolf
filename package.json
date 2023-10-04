@@ -7,15 +7,14 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
-    "migrate": "prisma migrate dev",
-    "studio": "prisma studio",
-    "serve": "ts-node --esm prisma/index.ts",
+    "migrate": "dotenv -e .env.local -- prisma migrate dev",
+    "studio": "dotenv -e .env.local -- prisma studio",
+    "serve": "dotenv -e .env.local -- ts-node --esm prisma/index.ts",
     "db": "cd db & docker-compose up",
-    "delete-all": "ts-node --esm .\\prisma\\scripts\\deleteall.ts"
+    "delete-all": "dotenv -e .env.local -- ts-node --esm .\\prisma\\scripts\\deleteall.ts"
   },
   "dependencies": {
     "axios": "^1.4.0",
-    "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "vue": "^3.3.4",
     "vue-router": "^4.2.4",
@@ -32,6 +31,7 @@
     "@types/node-cron": "^3.0.8",
     "@types/nodemailer": "^6.4.9",
     "@vitejs/plugin-vue": "^4.2.3",
+    "dotenv-cli": "^7.3.0",
     "jsonwebtoken": "^9.0.1",
     "nodemailer": "^6.9.4",
     "prettier": "^3.0.1",
