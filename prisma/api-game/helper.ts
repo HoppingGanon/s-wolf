@@ -87,6 +87,17 @@ export const getGameInfo = async (req: Request, res: Response) => {
           user: true,
         },
       },
+      killedUser: true,
+      actionDecisiveUser: {
+        include: {
+          user: {
+            select: {
+              code: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -146,6 +157,19 @@ export const getGameInfo = async (req: Request, res: Response) => {
     actionTimeLimit: Math.floor(
       (action.timeLimit.valueOf() - new Date().valueOf()) / 1000
     ),
+
+    decisiveUsers: action.actionDecisiveUser.map((a) => {
+      return a.user
+    }),
+  }
+
+  if (action.killedUser) {
+    // 殺害があったアクションにはユーザー情報を含める
+    data.killedUser = {
+      code: action.killedUser.code,
+      name: action.killedUser.name,
+      isDied: true,
+    }
   }
 
   return {

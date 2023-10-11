@@ -89,6 +89,13 @@ export interface GetGameResponse extends CheckedResponse {
 
   maxMembers?: number
   discussionSeconds?: number
+
+  killedUser?: GameUserData
+
+  decisiveUsers: {
+    code: string
+    name: string
+  }[]
 }
 
 export interface PostJoinGameRequest {

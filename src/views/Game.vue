@@ -42,6 +42,7 @@ const game = ref<GetGameResponse>({
   userActions: [],
   currentAction: 'READY',
   actionTimeLimit: 0,
+  wolfFetishism: '',
 })
 const password = ref('')
 
@@ -380,6 +381,11 @@ const judge = async () => {
         残り時間: <b>{{ timerStr }}</b>
       </v-col>
     </v-row>
+    <v-row>
+      <v-col>
+        狼ワード: <b>{{ game.wolfFetishism }}</b>
+      </v-col>
+    </v-row>
     <v-row class="py-3">
       <v-col class="d-flex justify-center">
         <v-progress-circular
@@ -419,6 +425,11 @@ const judge = async () => {
       <v-row>
         <v-col>
           残り時間: <b>{{ timerStr }}</b>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col>
+          狼ワード: <b>{{ game.wolfFetishism }}</b>
         </v-col>
       </v-row>
       <v-row>
@@ -472,16 +483,16 @@ const judge = async () => {
         残り時間: <b>{{ timerStr }}</b>
       </v-col>
     </v-row>
-    <v-row v-if="!inputed">
-      <v-select
-        v-model="votedUser"
-        :items="
-          (game.users || [])
-            .filter((u) => u.code !== store.code)
-            .map((u) => {
-              return { title: u.name, value: u.code }
-            })
-        " />
+    <v-row>
+      <v-col>
+        狼ワード: <b>{{ game.wolfFetishism }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        殺害されたのは<b>{{ game.killedUser?.name }}</b
+        >さんでした
+      </v-col>
     </v-row>
     <v-row class="py-3">
       <v-col class="d-flex justify-end">

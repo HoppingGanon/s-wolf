@@ -5,6 +5,7 @@ import {
   PutInputRequest,
   PutVoteRequest,
   LIMIT_EXECUTION_SECONDS,
+  LIMIT_JUDGEMENT_SECONDS,
 } from '../apimodel'
 import { baseRule, requiredRule, valid } from '../../shared/rules'
 import prisma from '../prisma'
@@ -233,7 +234,7 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
     res.status(404)
     res.json({
       code: 'judge-003',
-      message: 'ユーザーが存在しません',
+      message: '投票したユーザーは存在しません',
     } as ErrorResponse)
     return
   }
@@ -244,7 +245,7 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
     res.status(400)
     res.json({
       code: 'judge-004',
-      message: 'すでに入力が終了しています',
+      message: 'すでに投票が終了しています',
     } as ErrorResponse)
     return
   }
@@ -270,14 +271,17 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
   try {
     await prisma.$transaction(async (prisma) => {
       // 投票
+      const v = await prisma.vote.create({
+        data: {
+          actionId: gameObj.action.id,
+          votedUserId: votedGameOnUser.userId,
+        },
+      })
+
       await prisma.userAction.update({
         data: {
           completed: true,
-          vote: {
-            create: {
-              votedUserId: votedGameOnUser.userId,
-            },
-          },
+          voteId: v.id,
         },
         where: {
           id: userAction.id,
@@ -288,39 +292,125 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
     res.status(400)
     res.json({
       code: 'judge-006',
-      message: '参加に失敗しました',
+      message: '投票に失敗しました',
     } as ErrorResponse)
   }
 
-  await prisma.userAction
-    .count({
-      where: {
-        actionId: gameObj.action.id,
-        completed: true,
-      },
-    })
-    .then((cnt) => {
+  try {
+    await prisma.$transaction(async (prisma) => {
+      const cnt = await prisma.userAction.count({
+        where: {
+          actionId: gameObj.action.id,
+          completed: true,
+        },
+      })
+
       if (gameObj.game.users.length === cnt) {
-        const timeLimit = new Date()
-        timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_EXECUTION_SECONDS)
-        prisma.action
-          .create({
+        // 投票完了
+
+        const action = await prisma.action.findFirst({
+          select: {
+            votes: true,
+          },
+          where: {
+            id: gameObj.action.id,
+          },
+        })
+
+        if (!action) {
+          res.status(400)
+          res.json({
+            code: 'judge-008',
+            message: '投票に失敗しました',
+          } as ErrorResponse)
+          return
+        }
+
+        // 集計
+        const list: { id: number; cnt: number }[] = []
+        gameObj.game.users.forEach((u) => {
+          list.push({ id: u.userId, cnt: 0 })
+        })
+        action.votes.forEach((vote) => {
+          const hit = list.filter((i) => i.id === vote.votedUserId)
+          if (hit.length > 0) {
+            hit[0].cnt++
+          }
+        })
+
+        const sorted = list.sort((b, a) => a.cnt - b.cnt)
+
+        let max = 0
+        if (sorted.length > 0) {
+          max = sorted[0].cnt
+        }
+        const topRankers = sorted.filter((i) => i.cnt === max)
+        if (topRankers.length === 0) {
+          res.status(400)
+          res.json({
+            code: 'judge-007',
+            message: '投票に失敗しました',
+          } as ErrorResponse)
+          return
+        } else if (topRankers.length === 1) {
+          // 殺害対象決定
+
+          // 殺害
+          await prisma.gameOnUser.update({
+            data: {
+              isDied: true,
+            },
+            where: {
+              userId_gameId: {
+                gameId: gameObj.game.id,
+                userId: topRankers[0].id,
+              },
+            },
+          })
+
+          // 処刑アクションへ移行
+          const timeLimit = new Date()
+          timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_EXECUTION_SECONDS)
+          await prisma.action.create({
             data: {
               type: 'EXECUTION',
               gameId: gameObj.game.id,
               timeLimit: timeLimit,
+              killedUserId: topRankers[0].id,
             },
           })
-          .catch((err) => {
-            console.log(err)
+        } else {
+          // 決選投票アクションへ移行
+          const timeLimit = new Date()
+          timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_JUDGEMENT_SECONDS)
+          const action = await prisma.action.create({
+            data: {
+              type: 'JUDGEMENT',
+              gameId: gameObj.game.id,
+              timeLimit: timeLimit,
+              killedUserId: topRankers[0].id,
+            },
           })
+          for (let u of topRankers) {
+            await prisma.actionDecisiveUser.create({
+              data: {
+                userId: u.id,
+                actionId: action.id,
+              },
+            })
+          }
+        }
       }
     })
-    .catch((err) => {
-      console.log(err)
-    })
-  res.status(200)
-  res.json()
+    res.status(200)
+    res.json()
+  } catch {
+    res.status(400)
+    res.json({
+      code: 'judge-008',
+      message: '投票に失敗しました',
+    } as ErrorResponse)
+  }
 })
 
 app.delete<any, any, any, PutInputRequest>(

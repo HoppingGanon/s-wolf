@@ -8,17 +8,19 @@ datasource db {
 }
 
 model User {
-  id          Int          @id @default(autoincrement())
-  code        String       @unique @default("")
-  name        String       @default("")
-  password    String       @default("")
-  mailaddress String       @unique @default("")
-  games       GameOnUser[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @default(now())
-  userActions UserAction[]
-  votes       Vote[]
-  hostGame    Game[]
+  id                 Int                  @id @default(autoincrement())
+  code               String               @unique @default("")
+  name               String               @default("")
+  password           String               @default("")
+  mailaddress        String               @unique @default("")
+  games              GameOnUser[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @default(now())
+  killingUserActions UserAction[]
+  votes              Vote[]
+  hostGame           Game[]
+  Action             Action[]
+  actionDecisiveUser ActionDecisiveUser[]
 }
 
 model AltUser {
@@ -83,21 +85,27 @@ enum ActionType {
 }
 
 model Action {
-  id          Int          @id @default(autoincrement())
-  gameId      Int
-  game        Game         @relation(fields: [gameId], references: [id])
-  type        ActionType
-  userActions UserAction[]
-  timeLimit   DateTime     @default(now())
-  createdAt   DateTime     @default(now())
+  id           Int          @id @default(autoincrement())
+  gameId       Int
+  game         Game         @relation(fields: [gameId], references: [id])
+  type         ActionType
+  userActions  UserAction[]
+  killedUserId Int?
+  killedUser   User?        @relation(fields: [killedUserId], references: [id])
+
+  timeLimit DateTime @default(now())
+  createdAt DateTime @default(now())
+  votes     Vote[]
+
+  actionDecisiveUser ActionDecisiveUser[]
 }
 
 model UserAction {
   id       Int    @id @default(autoincrement())
   actionId Int
   action   Action @relation(fields: [actionId], references: [id])
-  gameId   Int
-  game     Game   @relation(fields: [gameId], references: [id])
+  gameId   Int?
+  game     Game?  @relation(fields: [gameId], references: [id])
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
@@ -108,9 +116,19 @@ model UserAction {
   completed Boolean
 }
 
+model ActionDecisiveUser {
+  id       Int    @id @default(autoincrement())
+  userId   Int
+  user     User   @relation(fields: [userId], references: [id])
+  actionId Int
+  action   Action @relation(fields: [actionId], references: [id])
+}
+
 model Vote {
   id          Int          @id @default(autoincrement())
   userAction  UserAction[]
+  actionId    Int
+  action      Action       @relation(fields: [actionId], references: [id])
   votedUserId Int
   votedUser   User         @relation(fields: [votedUserId], references: [id])
 }
