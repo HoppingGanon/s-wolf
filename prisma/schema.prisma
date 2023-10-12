@@ -51,6 +51,7 @@ model Game {
   actions           Action[]
   finnalyReleasing  Boolean
   maxMembers        Int
+  maxTurns          Int             @default(1)
   password          String
   discussionSeconds Int             @default(180)
   timeLimit         DateTime        @default(now())
@@ -92,6 +93,7 @@ model Action {
   userActions  UserAction[]
   killedUserId Int?
   killedUser   User?        @relation(fields: [killedUserId], references: [id])
+  message      String       @default("")
 
   timeLimit DateTime @default(now())
   createdAt DateTime @default(now())

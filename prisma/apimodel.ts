@@ -62,6 +62,9 @@ export interface MaskedUserData {
 export interface GameUserData extends MaskedUserData {
   isDied: boolean
 }
+export interface KilledUserData extends GameUserData {
+  fetishism: string
+}
 
 export interface CheckedResponse {
   opened: boolean
@@ -90,12 +93,24 @@ export interface GetGameResponse extends CheckedResponse {
   maxMembers?: number
   discussionSeconds?: number
 
-  killedUser?: GameUserData
+  killedUser?: KilledUserData
 
   decisiveUsers: {
     code: string
     name: string
   }[]
+
+  actionMessage: string
+
+  result: {
+    killedUsers: {
+      code: string
+      name: string
+      fetishism: string
+      isWolf: boolean
+    }[]
+    winner?: 'wolf' | 'human'
+  }
 }
 
 export interface PostJoinGameRequest {

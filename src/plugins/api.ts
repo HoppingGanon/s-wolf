@@ -213,6 +213,10 @@ export class Api {
       userCode,
     } as PutVoteRequest)
   }
+
+  putNext(gameName: string) {
+    return this.put(`/game/${gameName}/next`)
+  }
 }
 
 const api = new Api()

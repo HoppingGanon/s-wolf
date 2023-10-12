@@ -43,6 +43,14 @@ const game = ref<GetGameResponse>({
   currentAction: 'READY',
   actionTimeLimit: 0,
   wolfFetishism: '',
+
+  decisiveUsers: [],
+
+  actionMessage: '',
+
+  result: {
+    killedUsers: [],
+  },
 })
 const password = ref('')
 
@@ -187,6 +195,26 @@ const inputed = computed(() =>
     : false
 )
 
+const voteItemes = computed(() => {
+  if (game.value.decisiveUsers.length === 0) {
+    if (game.value.users) {
+      return game.value.users
+        .filter((u) => u.code !== store.code)
+        .map((u) => {
+          return { title: u.name, value: u.code }
+        })
+    } else {
+      return []
+    }
+  } else {
+    return game.value.decisiveUsers
+      .filter((u) => u.code !== store.code)
+      .map((u) => {
+        return { title: u.name, value: u.code }
+      })
+  }
+})
+
 const votedUser = ref<string | undefined>(undefined)
 const judge = async () => {
   if (judgeForm.value) {
@@ -200,6 +228,10 @@ const judge = async () => {
       }
     }
   }
+}
+
+const next = async () => {
+  await api.putNext(gameName.value)
 }
 </script>
 
@@ -231,6 +263,8 @@ const judge = async () => {
   <default-card
     v-else-if="state === 'READY'"
     title="参加者を募っています"
+    :show-close="game.hostUser?.code === store.code"
+    @close="closeDialog = true"
     style="margin-top: 100px">
     <v-row>
       <v-col>
@@ -289,12 +323,6 @@ const judge = async () => {
     <v-row>
       <v-col class="d-flex justify-end">
         <v-btn
-          v-if="game.hostUser?.code === store.code"
-          color="grey"
-          @click="closeDialog = true">
-          強制終了
-        </v-btn>
-        <v-btn
           v-if="
             game.users !== undefined &&
             game.users.length >= 3 &&
@@ -312,6 +340,8 @@ const judge = async () => {
   <default-card
     v-if="state === 'INPUT'"
     title="狼ワードの入力"
+    :show-close="game.hostUser?.code === store.code"
+    @close="closeDialog = true"
     style="margin-top: 100px">
     <v-form ref="passForm">
       <v-row>
@@ -331,7 +361,9 @@ const judge = async () => {
       </v-row>
       <v-row>
         <v-col v-if="inputed"> 他参加者の入力完了をお待ちください </v-col>
-        <v-col v-else> タイトルに沿って狼ワードを入力してください </v-col>
+        <v-col v-else>
+          タイトルに沿った貴方の秘密のワードを入力してください
+        </v-col>
       </v-row>
       <v-row v-if="inputed" class="py-3">
         <v-col>
@@ -341,19 +373,13 @@ const judge = async () => {
       <v-row v-if="!inputed">
         <v-col>
           <v-text-field
-            label="狼ワード"
+            label="秘密のワード"
             v-model="word"
             :rules="[requiredRule, baseRule]"></v-text-field>
         </v-col>
       </v-row>
       <v-row class="py-3">
         <v-col class="d-flex justify-end">
-          <v-btn
-            v-if="game.hostUser?.code === store.code"
-            color="grey"
-            @click="closeDialog = true">
-            強制終了
-          </v-btn>
           <v-btn v-if="!inputed" @click="input" color="primary" class="ml-1">
             送信
           </v-btn>
@@ -365,6 +391,8 @@ const judge = async () => {
   <default-card
     v-if="state === 'DISCUSSION'"
     title="議論タイム"
+    :show-close="game.hostUser?.code === store.code"
+    @close="closeDialog = true"
     style="margin-top: 100px">
     <v-row>
       <v-col>
@@ -395,22 +423,14 @@ const judge = async () => {
           :width="15" />
       </v-col>
     </v-row>
-    <v-row class="py-3">
-      <v-col v-if="!inputed" class="d-flex justify-end">
-        <v-btn
-          v-if="game.hostUser?.code === store.code"
-          color="grey"
-          @click="closeDialog = true">
-          強制終了
-        </v-btn>
-      </v-col>
-    </v-row>
   </default-card>
 
   <v-form ref="judgeForm">
     <default-card
       v-if="state === 'JUDGEMENT'"
-      title="投票タイム"
+      :title="game.decisiveUsers.length > 0 ? '決戦投票' : '投票'"
+      :show-close="game.hostUser?.code === store.code"
+      @close="closeDialog = true"
       style="margin-top: 100px">
       <v-row>
         <v-col>
@@ -438,27 +458,12 @@ const judge = async () => {
       </v-row>
       <v-row v-if="!inputed">
         <v-col>
-          <v-select
-            v-model="votedUser"
-            required
-            :items="
-              (game.users || [])
-                .filter((u) => u.code !== store.code)
-                .map((u) => {
-                  return { title: u.name, value: u.code }
-                })
-            " />
+          <v-select v-model="votedUser" required :items="voteItemes" />
         </v-col>
       </v-row>
       <v-row class="py-3">
         <v-col class="d-flex justify-end">
           <v-btn v-if="!inputed" color="primary" @click="judge"> 投票 </v-btn>
-          <v-btn
-            v-if="game.hostUser?.code === store.code"
-            color="grey"
-            @click="closeDialog = true">
-            強制終了
-          </v-btn>
         </v-col>
       </v-row>
     </default-card>
@@ -467,6 +472,8 @@ const judge = async () => {
   <default-card
     v-if="state === 'EXECUTION'"
     title="投票結果"
+    :show-close="game.hostUser?.code === store.code"
+    @close="closeDialog = true"
     style="margin-top: 100px">
     <v-row>
       <v-col>
@@ -490,19 +497,77 @@ const judge = async () => {
     </v-row>
     <v-row>
       <v-col>
-        殺害されたのは<b>{{ game.killedUser?.name }}</b
-        >さんでした
+        殺害されたのは<b>{{ game.killedUser?.name }}</b> さんでした<br />
+        死者のワードは公開されます。<br />
+        <br />
+        {{ game.killedUser?.name }} さんのワードは<b>{{
+          game.killedUser?.fetishism
+        }}</b
+        >でした
       </v-col>
     </v-row>
     <v-row class="py-3">
       <v-col class="d-flex justify-end">
-        <v-btn v-if="!inputed" color="primary" @click="judge"> 投票 </v-btn>
-        <v-btn
-          v-if="game.hostUser?.code === store.code"
-          color="grey"
-          @click="closeDialog = true">
-          強制終了
-        </v-btn>
+        <v-btn v-if="!inputed" color="primary" @click="next"> 次へ </v-btn>
+      </v-col>
+    </v-row>
+  </default-card>
+
+  <default-card
+    v-if="state === 'RESULT'"
+    title="ゲーム結果"
+    :show-close="game.hostUser?.code === store.code"
+    @close="closeDialog = true"
+    style="margin-top: 100px">
+    <v-row>
+      <v-col>
+        タイトル: <b>{{ game.title }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        ゲームID: <b>{{ game.name }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        狼ワード: <b>{{ game.wolfFetishism }}</b>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col class="text-title font-weight-bold">
+        {{
+          game.result.winner === 'wolf' ? '人狼' : '市民'
+        }}の勝利でゲームは終了しました
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col> 殺害された人↓ </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        <table>
+          <tr>
+            <td>名前</td>
+            <td>秘密のワード</td>
+          </tr>
+          <tr v-for="(u, i) of game.result.killedUsers" :key="i">
+            <td>
+              {{ u.name }}
+            </td>
+            <td>
+              {{ u.fetishism }}
+            </td>
+            <td>
+              {{ u.isWolf ? '人狼' : '市民' }}
+            </td>
+          </tr>
+        </table>
+      </v-col>
+    </v-row>
+    <v-row class="py-3">
+      <v-col class="d-flex justify-end">
+        <v-btn color="primary" to="/"> ホームに戻る </v-btn>
       </v-col>
     </v-row>
   </default-card>

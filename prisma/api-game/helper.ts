@@ -134,6 +134,22 @@ export const getGameInfo = async (req: Request, res: Response) => {
     }
   })
 
+  const killedUsers = game.users
+    .filter((u) => u.isDied)
+    .map((u) => {
+      return {
+        code: u.user.code,
+        fetishism: u.fetishism,
+        isWolf: u.isWolf,
+        name: u.user.name,
+      }
+    })
+
+  let winner: 'wolf' | 'human' | undefined = undefined
+  if (action.type === 'RESULT') {
+    winner = killedUsers.filter((u) => u.isWolf).length === 0 ? 'wolf' : 'human'
+  }
+
   const data: GetGameResponse = {
     opened: true,
     message: 'ゲームの取得に成功しました',
@@ -161,13 +177,23 @@ export const getGameInfo = async (req: Request, res: Response) => {
     decisiveUsers: action.actionDecisiveUser.map((a) => {
       return a.user
     }),
+
+    actionMessage: action.message,
+
+    result: {
+      killedUsers,
+      winner,
+    },
   }
 
   if (action.killedUser) {
     // 殺害があったアクションにはユーザー情報を含める
+
+    const hits = game.users.filter((u) => u.user.id === action.killedUser?.id)
     data.killedUser = {
       code: action.killedUser.code,
       name: action.killedUser.name,
+      fetishism: hits.length === 0 ? '' : hits[0].fetishism,
       isDied: true,
     }
   }
@@ -187,6 +213,7 @@ export async function checkGame(
     createdAt: Date
     timeLimit: Date
     hostUserId: number
+    maxTurns: number
   },
   action: { id: number; type: ActionType; createdAt: Date; timeLimit: Date },
   requestUser: {
@@ -300,6 +327,8 @@ export async function checkGame(
           message: '',
         }
       }
+    } else if (action.type === 'EXECUTION') {
+      await doTurnEnd(game)
     } else {
       await prisma.game
         .update({
@@ -322,5 +351,80 @@ export async function checkGame(
   return {
     opened: true,
     message: '',
+  }
+}
+
+export async function doTurnEnd(game: {
+  id: number
+  status: GameStatusTytpe
+  createdAt: Date
+  timeLimit: Date
+  hostUserId: number
+  maxTurns: number
+}) {
+  const users = await prisma.gameOnUser.findMany({
+    where: {
+      gameId: game.id,
+      isDied: false,
+    },
+  })
+
+  const wolfs = users.filter((u) => u.isWolf)
+  if (wolfs.length > 0) {
+    if (users.length === wolfs.length) {
+      // 人狼勝利
+      await prisma.$transaction(async (prisma) => {
+        await prisma.action.create({
+          data: {
+            gameId: game.id,
+            type: 'RESULT',
+            message: '人狼の勝利です',
+          },
+        })
+
+        await prisma.game.update({
+          data: {
+            status: 'COMPLETED',
+          },
+          where: {
+            id: game.id,
+          },
+        })
+      })
+    } else {
+      const turnCnt = await prisma.action.count({
+        where: {
+          type: 'EXECUTION',
+        },
+      })
+      if (turnCnt >= game.maxTurns) {
+        // 逃げ切り
+        await prisma.action.create({
+          data: {
+            gameId: game.id,
+            type: 'RESULT',
+            message: '人狼の逃げ切り勝利です',
+          },
+        })
+      } else {
+        // 継続
+        await prisma.action.create({
+          data: {
+            gameId: game.id,
+            type: 'DISCUSSION',
+            message: '人狼はまだ生きています\n議論を再開してください',
+          },
+        })
+      }
+    }
+  } else {
+    // 市民勝利
+    await prisma.action.create({
+      data: {
+        gameId: game.id,
+        type: 'RESULT',
+        message: '人狼は死亡しました',
+      },
+    })
   }
 }
