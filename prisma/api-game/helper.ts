@@ -112,7 +112,7 @@ export const getGameInfo = async (req: Request, res: Response) => {
 
   const checked = await checkGame(game, action, user)
 
-  if (!checked.opened) {
+  if (!checked.opened && action.type !== 'RESULT') {
     res.status(200)
     res.json(checked)
     return null
@@ -134,20 +134,50 @@ export const getGameInfo = async (req: Request, res: Response) => {
     }
   })
 
-  const killedUsers = game.users
-    .filter((u) => u.isDied)
-    .map((u) => {
-      return {
-        code: u.user.code,
-        fetishism: u.fetishism,
-        isWolf: u.isWolf,
-        name: u.user.name,
-      }
-    })
+  let killedUsers: {
+    code: string
+    fetishism: string
+    isWolf: boolean
+    name: string
+    isDied: boolean
+  }[] = []
 
   let winner: 'wolf' | 'human' | undefined = undefined
   if (action.type === 'RESULT') {
+    // 最後なら特殊処理でユーザーを返す
     winner = killedUsers.filter((u) => u.isWolf).length === 0 ? 'wolf' : 'human'
+    const resultUsers = await prisma.gameOnUser.findMany({
+      include: {
+        user: true,
+      },
+      where: {
+        gameId: game.id,
+      },
+    })
+
+    killedUsers = resultUsers
+      .filter((u) => u.isDied || game.finnalyReleasing)
+      .map((u) => {
+        return {
+          code: u.user.code,
+          fetishism: u.fetishism,
+          isWolf: u.isWolf,
+          name: u.user.name,
+          isDied: u.isDied,
+        }
+      })
+  } else {
+    killedUsers = game.users
+      .filter((u) => u.isDied)
+      .map((u) => {
+        return {
+          code: u.user.code,
+          fetishism: u.fetishism,
+          isWolf: u.isWolf,
+          name: u.user.name,
+          isDied: u.isDied,
+        }
+      })
   }
 
   const data: GetGameResponse = {
@@ -181,7 +211,7 @@ export const getGameInfo = async (req: Request, res: Response) => {
     actionMessage: action.message,
 
     result: {
-      killedUsers,
+      users: killedUsers,
       winner,
     },
   }
@@ -305,6 +335,8 @@ export async function checkGame(
               gameId: game.id,
               type: 'JUDGEMENT',
               timeLimit: timeLimit,
+              title: '投票',
+              message: '狼ワードを指定したと思われる人狼を投票で決定します',
             },
           })
 
@@ -378,6 +410,7 @@ export async function doTurnEnd(game: {
           data: {
             gameId: game.id,
             type: 'RESULT',
+            title: 'ゲーム終了',
             message: '人狼の勝利です',
           },
         })
@@ -399,12 +432,25 @@ export async function doTurnEnd(game: {
       })
       if (turnCnt >= game.maxTurns) {
         // 逃げ切り
-        await prisma.action.create({
-          data: {
-            gameId: game.id,
-            type: 'RESULT',
-            message: '人狼の逃げ切り勝利です',
-          },
+
+        await prisma.$transaction(async (prisma) => {
+          await prisma.action.create({
+            data: {
+              gameId: game.id,
+              type: 'RESULT',
+              title: 'ゲーム終了',
+              message: '人狼の逃げ切り勝利です',
+            },
+          })
+
+          await prisma.game.update({
+            data: {
+              status: 'COMPLETED',
+            },
+            where: {
+              id: game.id,
+            },
+          })
         })
       } else {
         // 継続
@@ -412,6 +458,7 @@ export async function doTurnEnd(game: {
           data: {
             gameId: game.id,
             type: 'DISCUSSION',
+            title: '再議論タイム',
             message: '人狼はまだ生きています\n議論を再開してください',
           },
         })
@@ -419,12 +466,24 @@ export async function doTurnEnd(game: {
     }
   } else {
     // 市民勝利
-    await prisma.action.create({
-      data: {
-        gameId: game.id,
-        type: 'RESULT',
-        message: '人狼は死亡しました',
-      },
+    await prisma.$transaction(async (prisma) => {
+      await prisma.action.create({
+        data: {
+          gameId: game.id,
+          type: 'RESULT',
+          title: 'ゲーム終了',
+          message: '人狼は死亡しました',
+        },
+      })
+
+      await prisma.game.update({
+        data: {
+          status: 'COMPLETED',
+        },
+        where: {
+          id: game.id,
+        },
+      })
     })
   }
 }

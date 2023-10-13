@@ -40,6 +40,12 @@ const discussionSecondsList = [
   { title: '7分', value: 420 },
   { title: '8分', value: 480 },
 ]
+
+const maxTurns = ref(3)
+const maxTurnsList: { title: string; value: number }[] = []
+for (let turn = 1; turn <= 7; turn++) {
+  maxTurnsList.push({ title: `${turn}ターン`, value: turn })
+}
 const form = ref()
 
 const memberCountItems: number[] = []
@@ -57,7 +63,8 @@ const submit = async () => {
           password.value,
           memberCount.value,
           finnalyReleasing.value,
-          discussionSeconds.value
+          discussionSeconds.value,
+          maxTurns.value
         )
         .then((res) => {
           router.push(`/games/${res.data.gameName}`)
@@ -106,8 +113,16 @@ const submit = async () => {
       </v-row>
       <v-row dense>
         <v-col>
+          <v-select
+            label="最大ターン数"
+            v-model="maxTurns"
+            :items="maxTurnsList" />
+        </v-col>
+      </v-row>
+      <v-row dense>
+        <v-col>
           <v-checkbox
-            label="ゲーム終了後に勝者のカードを公開する"
+            label="ゲーム終了後に全員のワードを公開する"
             v-model="finnalyReleasing" />
         </v-col>
       </v-row>

@@ -45,6 +45,7 @@ app.post('/game/:name/start', async (req, res) => {
         gameId: gameObj.game.id,
         type: 'INPUT',
         timeLimit: timeLimit,
+        title: 'ワードの入力',
         message: 'ゲームが開始されました\nワードを入力してください',
       },
     })
@@ -188,6 +189,7 @@ app.put<any, any, any, PutInputRequest>(
             type: 'DISCUSSION',
             gameId: gameObj.game.id,
             timeLimit: timeLimit,
+            title: '議論タイム',
             message: '全員がワードを入力しました！\n議論を開始して下さい',
           },
         })
@@ -396,15 +398,30 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
           // 処刑アクションへ移行
           const timeLimit = new Date()
           timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_EXECUTION_SECONDS)
-          await prisma.action.create({
+          const newAction = await prisma.action.create({
             data: {
               type: 'EXECUTION',
               gameId: gameObj.game.id,
               timeLimit: timeLimit,
               killedUserId: topRankers[0].id,
+              title: '処刑執行',
               message: `${topRankers[0].name}さんが処刑されました`,
             },
           })
+          // 投票者追加
+          for (let u of gameObj.game.users) {
+            // 対象者以外が投票できる
+            await prisma.userAction.create({
+              data: {
+                id: undefined,
+                gameId: gameObj.game.id,
+                userId: u.userId,
+                actionId: newAction.id,
+                // 生きていなければfalse
+                completed: u.isDied,
+              },
+            })
+          }
         } else {
           // 決選投票が必要
 
@@ -436,15 +453,30 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
             timeLimit.setSeconds(
               timeLimit.getSeconds() + LIMIT_EXECUTION_SECONDS
             )
-            await prisma.action.create({
+            const newAction = await prisma.action.create({
               data: {
                 type: 'EXECUTION',
                 gameId: gameObj.game.id,
                 timeLimit: timeLimit,
                 killedUserId: topRankers[rndIndex].id,
-                message: `投票が完全に拮抗したので、ランダムで処刑が実行されます`,
+                title: '処刑執行',
+                message: `投票が完全に拮抗したので、ランダムで処刑が実行されました`,
               },
             })
+            // 投票者追加
+            for (let u of gameObj.game.users) {
+              // 対象者以外が投票できる
+              await prisma.userAction.create({
+                data: {
+                  id: undefined,
+                  gameId: gameObj.game.id,
+                  userId: u.userId,
+                  actionId: newAction.id,
+                  // 生きていなければfalse
+                  completed: u.isDied,
+                },
+              })
+            }
           } else {
             // 決選投票アクションへ移行
             const timeLimit = new Date()
@@ -457,7 +489,8 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
                 gameId: gameObj.game.id,
                 timeLimit: timeLimit,
                 killedUserId: topRankers[0].id,
-                message: '投票が拮抗したので、決選投票を実施します',
+                title: '決選投票',
+                message: `投票が完全に拮抗したので、決選投票を実施します`,
               },
             })
 
@@ -525,7 +558,7 @@ app.put<any, any, any, any>('/game/:name/next', async (req, res) => {
   })
   const userAction = ualist[0]
 
-  if (userAction.completed) {
+  if (userAction?.completed) {
     res.status(400)
     res.json({
       code: 'exe-002',
@@ -549,6 +582,7 @@ app.put<any, any, any, any>('/game/:name/next', async (req, res) => {
     where: {
       gameId: gameObj.game.id,
       actionId: gameObj.action.id,
+      completed: true,
     },
   })
 
@@ -573,6 +607,15 @@ app.delete<any, any, any, PutInputRequest>(
       res.json({
         code: 'cancel-001',
         message: '終了する権限がありません',
+      } as ErrorResponse)
+      return
+    }
+
+    if (!gameObj.data.opened) {
+      res.status(401)
+      res.json({
+        code: 'cancel-002',
+        message: '既に終了しています',
       } as ErrorResponse)
       return
     }

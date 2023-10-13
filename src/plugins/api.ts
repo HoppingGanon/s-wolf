@@ -165,7 +165,8 @@ export class Api {
     password: string,
     memberCount: number,
     finnalyReleasing: boolean,
-    discussionSeconds: number
+    discussionSeconds: number,
+    maxTurns: number
   ) {
     return this.post<PostGameResponse>('/game', {
       title,
@@ -173,6 +174,7 @@ export class Api {
       password,
       finnalyReleasing,
       discussionSeconds,
+      maxTurns,
     } as PostGameRequest)
   }
 

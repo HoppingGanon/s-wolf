@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import DefaultCard from '../components/DefaultCard.vue'
 import { requiredRule, passwordRule, baseRule } from '../../shared/rules'
 import router from '../plugins/router'
@@ -9,6 +9,8 @@ import api from '../plugins/api'
 import { ActionType, GetGameResponse } from '../../prisma/apimodel'
 import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
+import axios from 'axios'
+import { watch } from 'vue'
 
 const route = useRoute()
 
@@ -49,7 +51,7 @@ const game = ref<GetGameResponse>({
   actionMessage: '',
 
   result: {
-    killedUsers: [],
+    users: [],
   },
 })
 const password = ref('')
@@ -124,7 +126,7 @@ onMounted(async () => {
     await api
       .getGame(route.params.name, { hideToast: true })
       .then((res) => {
-        if (!res.data.opened) {
+        if (res.data.currentAction !== 'RESULT' && !res.data.opened) {
           toast.error(res.data.message)
           router.push('/')
           return
@@ -150,11 +152,14 @@ const join = async () => {
     const result = await passForm.value.validate()
     if (result.valid) {
       try {
+        disabled.value = true
         await api.postJoinGame(gameName.value, password.value)
         await checkGame()
       } catch (err: any) {
         toast.error(err.response?.data?.message)
         router.push(`/join-game`)
+      } finally {
+        disabled.value = false
       }
     }
   }
@@ -162,27 +167,37 @@ const join = async () => {
 
 const closeDialog = ref(false)
 const close = async () => {
+  disabled.value = true
   api
     .deleteCancelGame(gameName.value)
     .then(() => {})
     .catch(() => {})
+    .finally(() => {
+      disabled.value = false
+    })
 }
 
 const start = async () => {
   try {
+    disabled.value = true
     await api.postStartAction(gameName.value)
     await checkGame()
   } catch (err: any) {
     toast.error(err.response?.data?.message)
+  } finally {
+    disabled.value = false
   }
 }
 
 const input = async () => {
   try {
+    disabled.value = true
     await api.putInputWord(gameName.value, word.value)
     await checkGame()
   } catch (err: any) {
     toast.error(err.response?.data?.message)
+  } finally {
+    disabled.value = false
   }
 }
 
@@ -221,21 +236,114 @@ const judge = async () => {
     const result = await judgeForm.value.validate()
     if (result.valid) {
       try {
+        disabled.value = true
         await api.putVote(gameName.value, votedUser.value || '')
         await checkGame()
       } catch (err: any) {
         toast.error(err.response?.data?.message)
+      } finally {
+        disabled.value = false
       }
     }
   }
 }
 
 const next = async () => {
-  await api.putNext(gameName.value)
+  try {
+    disabled.value = true
+    await api.putNext(gameName.value)
+    await checkGame()
+  } catch (err: any) {
+    toast.error(err.response?.data?.message)
+    router.push(`/join-game`)
+  } finally {
+    disabled.value = false
+  }
 }
+type Dictionary = { [key: string]: any }
+
+const popupImageUrls = [
+  'INPUT',
+  'DISCUSSION',
+  'DISCUSSION-D',
+  'JUDGEMENT',
+  'EXECUTION',
+  'RESULT-WOLF',
+  'RESULT-HUMAN',
+]
+const popupImages = ref<Dictionary>({})
+const popupImage = computed(() => {
+  let image: string = state.value
+
+  if (state.value === 'DISCUSSION') {
+    if (game.value.decisiveUsers.length === 0) {
+      image = 'DISCUSSION'
+    } else {
+      image = 'DISCUSSION-D'
+    }
+  } else if (state.value === 'RESULT') {
+    if (game.value.result.winner === 'wolf') {
+      image = 'RESULT-WOLF'
+    } else {
+      image = 'RESULT-HUMAN'
+    }
+  }
+  return popupImages.value[image]
+})
+
+popupImageUrls.forEach((url) => {
+  axios
+    .get(`/images/${url}.png`, { baseURL: '', responseType: 'blob' })
+    .then((res) => {
+      const fr = new FileReader()
+      fr.readAsDataURL(res.data)
+      fr.onload = () => {
+        popupImages.value[url] = fr.result
+      }
+    })
+})
+
+const showPopup = ref(false)
+const popupClass = ref('popup-none')
+watch(state, (_, oldVal) => {
+  if (
+    !showPopup.value &&
+    ['READY', 'INPUT', 'DISCUSSION', 'JUDGEMENT', 'EXECUTION'].includes(oldVal)
+  ) {
+    popupClass.value = 'popup-none'
+    showPopup.value = true
+    nextTick(() => {
+      popupClass.value = 'popup-in'
+      setTimeout(() => {
+        popupClass.value = 'popup-show'
+        setTimeout(() => {
+          popupClass.value = 'popup-out'
+          setTimeout(() => {
+            popupClass.value = 'popup-none'
+            showPopup.value = false
+          }, 500)
+        }, 3500)
+      }, 500)
+    })
+  }
+})
+
+const disabled = ref(false)
 </script>
 
 <template>
+  <div v-show="showPopup" class="popup-wrapper">
+    <div class="popup-wrapper-2 d-flex justify-center align-center">
+      <v-card class="popup pa-1" color="#FFF7DF" :class="popupClass">
+        <div class="text-center font-weight-bold text-h5">
+          {{ game.currentAction }}
+        </div>
+        <div class="text-center text-h6">{{ game.actionMessage }}</div>
+        <v-img :src="popupImage"></v-img>
+      </v-card>
+    </div>
+  </div>
+
   <default-card
     v-if="state === 'UNAUTH'"
     title="合言葉を使って部屋に参加します"
@@ -254,7 +362,13 @@ const next = async () => {
       <v-row>
         <v-col class="d-flex justify-end">
           <v-btn to="/join-game"> キャンセル </v-btn>
-          <v-btn color="primary" class="ml-1" @click="join"> 参加 </v-btn>
+          <v-btn
+            color="primary"
+            class="ml-1"
+            @click="join"
+            :disabled="disabled">
+            参加
+          </v-btn>
         </v-col>
       </v-row>
     </v-form>
@@ -330,6 +444,7 @@ const next = async () => {
           "
           color="primary"
           @click="start"
+          :disabled="disabled"
           class="ml-1">
           開始
         </v-btn>
@@ -380,7 +495,12 @@ const next = async () => {
       </v-row>
       <v-row class="py-3">
         <v-col class="d-flex justify-end">
-          <v-btn v-if="!inputed" @click="input" color="primary" class="ml-1">
+          <v-btn
+            v-if="!inputed"
+            @click="input"
+            color="primary"
+            class="ml-1"
+            :disabled="disabled">
             送信
           </v-btn>
         </v-col>
@@ -463,7 +583,13 @@ const next = async () => {
       </v-row>
       <v-row class="py-3">
         <v-col class="d-flex justify-end">
-          <v-btn v-if="!inputed" color="primary" @click="judge"> 投票 </v-btn>
+          <v-btn
+            v-if="!inputed"
+            color="primary"
+            @click="judge"
+            :disabled="disabled">
+            投票
+          </v-btn>
         </v-col>
       </v-row>
     </default-card>
@@ -508,7 +634,14 @@ const next = async () => {
     </v-row>
     <v-row class="py-3">
       <v-col class="d-flex justify-end">
-        <v-btn v-if="!inputed" color="primary" @click="next"> 次へ </v-btn>
+        <v-btn
+          v-if="!inputed"
+          color="primary"
+          @click="next"
+          :disabled="disabled">
+          次へ
+        </v-btn>
+        <div v-else>他参加者の確認が完了するのをお待ちください。</div>
       </v-col>
     </v-row>
   </default-card>
@@ -516,9 +649,10 @@ const next = async () => {
   <default-card
     v-if="state === 'RESULT'"
     title="ゲーム結果"
-    :show-close="game.hostUser?.code === store.code"
-    @close="closeDialog = true"
+    show-close
+    @close="() => $router.push('/')"
     style="margin-top: 100px">
+    <template #close> 戻る </template>
     <v-row>
       <v-col>
         タイトル: <b>{{ game.title }}</b>
@@ -542,24 +676,31 @@ const next = async () => {
       </v-col>
     </v-row>
     <v-row>
-      <v-col> 殺害された人↓ </v-col>
+      <v-col> ＜結果＞ </v-col>
     </v-row>
-    <v-row>
+    <v-row dense>
       <v-col>
-        <table>
+        <table border="1" width="100%">
           <tr>
-            <td>名前</td>
-            <td>秘密のワード</td>
+            <td class="px-1 text-center">名前</td>
+            <td class="px-1 text-center">秘密のワード</td>
+            <td class="px-1 text-center">役</td>
+            <td class="px-1 text-center">生死</td>
           </tr>
-          <tr v-for="(u, i) of game.result.killedUsers" :key="i">
-            <td>
+          <tr v-for="(u, i) of game.result.users" :key="i">
+            <td class="px-1 text-center">
               {{ u.name }}
             </td>
-            <td>
+            <td class="px-1 text-center">
               {{ u.fetishism }}
             </td>
-            <td>
+            <td
+              class="px-1 text-center"
+              :class="u.isWolf ? 'font-weight-bold' : ''">
               {{ u.isWolf ? '人狼' : '市民' }}
+            </td>
+            <td class="px-1 text-center" :class="u.isDied ? 'text-red' : ''">
+              {{ u.isDied ? '死亡' : '生存' }}
             </td>
           </tr>
         </table>
@@ -580,8 +721,51 @@ const next = async () => {
       </v-card-text>
       <v-card-actions class="d-flex justify-end">
         <v-btn @click="closeDialog = false"> キャンセル </v-btn>
-        <v-btn color="primary" @click="close" dark> 強制終了 </v-btn>
+        <v-btn color="primary" @click="close" dark :disabled="disabled">
+          強制終了
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
+
+<style scoped>
+.popup-wrapper {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
+}
+.popup-wrapper-2 {
+  width: 100%;
+  height: 100%;
+}
+
+.popup {
+  width: 480px;
+  min-height: 320px;
+  transition-property: all;
+  transition-duration: 0.5s;
+}
+
+.popup-none {
+  opacity: 0;
+  margin-left: 100px;
+  margin-right: 0px;
+}
+.popup-in {
+  opacity: 0;
+  margin-left: 100px;
+  margin-right: 0px;
+}
+.popup-show {
+  opacity: 1;
+  margin-left: 0px;
+  margin-right: 0px;
+}
+.popup-out {
+  opacity: 0;
+  margin-left: 0px;
+  margin-right: 100px;
+}
+</style>

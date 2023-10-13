@@ -93,7 +93,9 @@ model Action {
   userActions  UserAction[]
   killedUserId Int?
   killedUser   User?        @relation(fields: [killedUserId], references: [id])
-  message      String       @default("")
+
+  title   String @default("")
+  message String @default("")
 
   timeLimit DateTime @default(now())
   createdAt DateTime @default(now())

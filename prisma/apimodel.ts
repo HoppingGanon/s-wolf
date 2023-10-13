@@ -33,6 +33,7 @@ export interface PostGameRequest {
   memberCount: number
   finnalyReleasing: boolean
   discussionSeconds: number
+  maxTurns: number
 }
 
 export interface PostGameResponse {
@@ -103,11 +104,12 @@ export interface GetGameResponse extends CheckedResponse {
   actionMessage: string
 
   result: {
-    killedUsers: {
+    users: {
       code: string
       name: string
       fetishism: string
       isWolf: boolean
+      isDied: boolean
     }[]
     winner?: 'wolf' | 'human'
   }

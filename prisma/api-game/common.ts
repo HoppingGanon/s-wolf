@@ -63,14 +63,15 @@ app.get('/my-game', async (_req, res) => {
   return
 })
 
-app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
-  const title = _req.body.title
-  const password = _req.body.password
-  const memberCount = _req.body.memberCount
-  const finnalyReleasing = _req.body.finnalyReleasing
-  const discussionSeconds = _req.body.discussionSeconds
+app.post<any, any, any, PostGameRequest>('/game', async (req, res) => {
+  const title = req.body.title
+  const password = req.body.password
+  const memberCount = req.body.memberCount
+  const finnalyReleasing = req.body.finnalyReleasing
+  const discussionSeconds = req.body.discussionSeconds
+  const maxTurns = req.body.maxTurns
 
-  const user = await verifyToken(_req, res)
+  const user = await verifyToken(req, res)
   if (user === false) {
     return
   }
@@ -99,6 +100,14 @@ app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
     res.json({
       code: 'postgames-003',
       message: result,
+    } as ErrorResponse)
+  }
+
+  if (!(maxTurns && maxTurns >= 1 && maxTurns <= 7)) {
+    res.status(400)
+    res.json({
+      code: 'postgames-004',
+      message: '最大ターン数は1～7で指定する必要があります',
     } as ErrorResponse)
   }
 
@@ -156,7 +165,7 @@ app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
     console.log(e)
     res.status(400)
     res.json({
-      code: 'postgames-004',
+      code: 'postgames-005',
       message: 'ゲームの作成に失敗しました',
     } as ErrorResponse)
     return
@@ -172,7 +181,7 @@ app.post<any, any, any, PostGameRequest>('/game', async (_req, res) => {
   } else {
     res.status(400)
     res.json({
-      code: 'postgames-005',
+      code: 'postgames-006',
       message: 'ゲームの作成に失敗しました',
     } as ErrorResponse)
     return

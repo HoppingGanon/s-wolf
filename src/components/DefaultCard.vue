@@ -25,7 +25,7 @@ const emits = defineEmits<{ (e: 'close'): void }>()
             <template v-if="showClose" #default>
               <div class="px-3 d-flex justify-end" style="width: 100%">
                 <v-btn color="red" @click="$emit('close')" variant="outlined">
-                  <v-icon>mdi-close</v-icon> 強制終了
+                  <slot name="close"><v-icon>mdi-close</v-icon> 強制終了</slot>
                 </v-btn>
               </div>
             </template>
