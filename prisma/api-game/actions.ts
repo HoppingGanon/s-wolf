@@ -408,17 +408,15 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
               message: `${topRankers[0].name}さんが処刑されました`,
             },
           })
-          // 投票者追加
+          // 確認者追加
           for (let u of gameObj.game.users) {
-            // 対象者以外が投票できる
             await prisma.userAction.create({
               data: {
                 id: undefined,
                 gameId: gameObj.game.id,
                 userId: u.userId,
                 actionId: newAction.id,
-                // 生きていなければfalse
-                completed: u.isDied,
+                completed: false,
               },
             })
           }
@@ -427,9 +425,10 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
 
           if (
             gameObj.game.users.filter((u) => !u.isDied).length ===
-            topRankers.length
+              topRankers.length ||
+            actionDecisiveUsers.length > 0
           ) {
-            // 決選投票ができない場合、ランダム殺害
+            // 決選投票ができない場合、または既に決選投票を行っている場合ランダム殺害
 
             const rndIndex = Math.floor(
               crypto.randomInt(topRankers.length * 1000) / 1000
@@ -483,6 +482,7 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
             timeLimit.setSeconds(
               timeLimit.getSeconds() + LIMIT_JUDGEMENT_SECONDS
             )
+
             const newAction = await prisma.action.create({
               data: {
                 type: 'JUDGEMENT',
@@ -490,7 +490,13 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
                 timeLimit: timeLimit,
                 killedUserId: topRankers[0].id,
                 title: '決選投票',
-                message: `投票が完全に拮抗したので、決選投票を実施します`,
+                message: `${topRankers
+                  .map((r) => {
+                    return `${r.name}さん`
+                  })
+                  .join(
+                    'と'
+                  )}への投票が完全に拮抗したので、決選投票を実施します\n`,
               },
             })
 
@@ -519,6 +525,16 @@ app.put<any, any, any, PutVoteRequest>('/game/:name/vote', async (req, res) => {
                     actionId: newAction.id,
                     // 生きていなければfalse
                     completed: u.isDied,
+                  },
+                })
+              } else {
+                await prisma.userAction.create({
+                  data: {
+                    id: undefined,
+                    gameId: gameObj.game.id,
+                    userId: u.userId,
+                    actionId: newAction.id,
+                    completed: true,
                   },
                 })
               }

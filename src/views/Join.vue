@@ -15,7 +15,7 @@ onMounted(async () => {
   try {
     const res = await api.getMyGame()
     if (res.data.exists) {
-      toast.info('開いたまま終了していないゲームがあったため、移動しました')
+      toast.info('参加中のゲームがあったため、移動しました')
       router.replace(`/games/${res.data.gameName}`)
       return
     }

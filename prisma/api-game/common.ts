@@ -26,24 +26,38 @@ app.get('/my-game', async (_req, res) => {
     return
   }
 
-  const game = await prisma.game.findFirst({
+  const gameOnUser = await prisma.gameOnUser.findFirst({
+    include: {
+      game: {
+        include: {
+          users: true,
+        },
+      },
+    },
     where: {
-      hostUserId: user.id,
-      status: 'OPENED',
+      userId: user.id,
+      game: {
+        status: 'OPENED',
+      },
+    },
+    orderBy: {
+      game: {
+        createdAt: 'desc',
+      },
     },
   })
 
-  if (game) {
+  if (gameOnUser) {
     const action = await prisma.action.findFirst({
       where: {
-        gameId: game.id,
+        gameId: gameOnUser.game.id,
       },
       orderBy: {
         id: 'desc',
       },
     })
     if (action) {
-      const chk = await checkGame(game, action, user)
+      const chk = await checkGame(gameOnUser.game, action, user)
       if (!chk.opened) {
         res.status(200)
         res.json({
@@ -53,14 +67,20 @@ app.get('/my-game', async (_req, res) => {
         return
       }
     }
-  }
 
-  res.status(200)
-  res.json({
-    exists: !!game,
-    gameName: game?.gameName,
-  } as MyGameResponse)
-  return
+    res.status(200)
+    res.json({
+      exists: true,
+      gameName: gameOnUser.game.gameName,
+    } as MyGameResponse)
+    return
+  } else {
+    res.status(200)
+    res.json({
+      exists: false,
+    } as MyGameResponse)
+    return
+  }
 })
 
 app.post<any, any, any, PostGameRequest>('/game', async (req, res) => {
@@ -131,6 +151,7 @@ app.post<any, any, any, PostGameRequest>('/game', async (req, res) => {
           password: await digestMessage(password, gameName),
           finnalyReleasing: finnalyReleasing,
           maxMembers: memberCount,
+          maxTurns: maxTurns,
           timeLimit: timeLimit,
           discussionSeconds: discussionSeconds,
           status: 'OPENED',

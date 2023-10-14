@@ -44,7 +44,7 @@ const submit = async () => {
       <v-row dense>
         <v-col class="d-flex justify-end">
           <v-btn :disabled="loading" color="primary" @click="submit">
-            ログイン
+            登録
           </v-btn>
         </v-col>
       </v-row>

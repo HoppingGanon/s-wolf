@@ -11,6 +11,7 @@ import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
 import axios from 'axios'
 import { watch } from 'vue'
+import ResultTable from '../components/ResultTable.vue'
 
 const route = useRoute()
 
@@ -48,6 +49,7 @@ const game = ref<GetGameResponse>({
 
   decisiveUsers: [],
 
+  actionTitle: '',
   actionMessage: '',
 
   result: {
@@ -55,6 +57,9 @@ const game = ref<GetGameResponse>({
   },
 })
 const password = ref('')
+
+const isDecisive = computed(() => game.value.decisiveUsers.length)
+const isDecisivePopup = ref(false)
 
 const checkGame = async () => {
   try {
@@ -74,6 +79,15 @@ const checkGame = async () => {
 
     game.value = res.data
     state.value = game.value.currentAction || 'READY'
+
+    if (state.value === 'JUDGEMENT' && isDecisive.value) {
+      if (!showPopup.value && !isDecisivePopup.value) {
+        popup()
+      }
+      isDecisivePopup.value = true
+    } else {
+      isDecisivePopup.value = false
+    }
   } catch (err: any) {
     toast.error(err.response?.data?.message)
     return
@@ -113,7 +127,7 @@ onMounted(async () => {
   try {
     const res = await api.getMyGame()
     if (res.data.exists && res.data.gameName !== route.params.name) {
-      toast.info('開いたまま終了していないゲームがあったため、移動しました')
+      toast.info('参加中のゲームがあったため、移動しました')
       router.push(`/games/${res.data.gameName}`)
       return
     }
@@ -170,7 +184,9 @@ const close = async () => {
   disabled.value = true
   api
     .deleteCancelGame(gameName.value)
-    .then(() => {})
+    .then(async () => {
+      await checkGame()
+    })
     .catch(() => {})
     .finally(() => {
       disabled.value = false
@@ -214,7 +230,7 @@ const voteItemes = computed(() => {
   if (game.value.decisiveUsers.length === 0) {
     if (game.value.users) {
       return game.value.users
-        .filter((u) => u.code !== store.code)
+        .filter((u) => u.code !== store.code && !u.isDied)
         .map((u) => {
           return { title: u.name, value: u.code }
         })
@@ -243,6 +259,7 @@ const judge = async () => {
         toast.error(err.response?.data?.message)
       } finally {
         disabled.value = false
+        votedUser.value = undefined
       }
     }
   }
@@ -265,7 +282,7 @@ type Dictionary = { [key: string]: any }
 const popupImageUrls = [
   'INPUT',
   'DISCUSSION',
-  'DISCUSSION-D',
+  'JUDGEMENT-D',
   'JUDGEMENT',
   'EXECUTION',
   'RESULT-WOLF',
@@ -275,11 +292,11 @@ const popupImages = ref<Dictionary>({})
 const popupImage = computed(() => {
   let image: string = state.value
 
-  if (state.value === 'DISCUSSION') {
+  if (state.value === 'JUDGEMENT') {
     if (game.value.decisiveUsers.length === 0) {
-      image = 'DISCUSSION'
+      image = 'JUDGEMENT'
     } else {
-      image = 'DISCUSSION-D'
+      image = 'JUDGEMENT-D'
     }
   } else if (state.value === 'RESULT') {
     if (game.value.result.winner === 'wolf') {
@@ -305,41 +322,77 @@ popupImageUrls.forEach((url) => {
 
 const showPopup = ref(false)
 const popupClass = ref('popup-none')
+const popup = () => {
+  popupClass.value = 'popup-none'
+  showPopup.value = true
+  nextTick(() => {
+    popupClass.value = 'popup-in'
+    setTimeout(() => {
+      popupClass.value = 'popup-show'
+      setTimeout(() => {
+        popupClass.value = 'popup-out'
+        setTimeout(() => {
+          popupClass.value = 'popup-none'
+          showPopup.value = false
+        }, 500)
+      }, 3500)
+    }, 500)
+  })
+}
 watch(state, (_, oldVal) => {
   if (
     !showPopup.value &&
     ['READY', 'INPUT', 'DISCUSSION', 'JUDGEMENT', 'EXECUTION'].includes(oldVal)
   ) {
-    popupClass.value = 'popup-none'
-    showPopup.value = true
-    nextTick(() => {
-      popupClass.value = 'popup-in'
-      setTimeout(() => {
-        popupClass.value = 'popup-show'
-        setTimeout(() => {
-          popupClass.value = 'popup-out'
-          setTimeout(() => {
-            popupClass.value = 'popup-none'
-            showPopup.value = false
-          }, 500)
-        }, 3500)
-      }, 500)
-    })
+    popup()
   }
 })
 
 const disabled = ref(false)
+
+const resultUsers = computed(() => {
+  const list: {
+    code: string
+    name: string
+    fetishism?: string
+    isWolf?: boolean
+    isDied: boolean
+  }[] = []
+
+  if (game.value.users) {
+    game.value.users.forEach((u) => {
+      list.push({
+        code: u.code,
+        name: u.name,
+        fetishism: undefined,
+        isWolf: undefined,
+        isDied: u.isDied,
+      })
+    })
+  }
+  game.value.result.users.forEach((u) => {
+    const hits = list.filter((u2) => u2.code === u.code)
+    if (hits.length > 0) {
+      hits[0].fetishism = u.fetishism
+      hits[0].isWolf = u.isWolf
+    }
+  })
+
+  return list.sort((a, b) => (a.code < b.code ? -1 : 1))
+})
 </script>
 
 <template>
   <div v-show="showPopup" class="popup-wrapper">
     <div class="popup-wrapper-2 d-flex justify-center align-center">
       <v-card class="popup pa-1" color="#FFF7DF" :class="popupClass">
-        <div class="text-center font-weight-bold text-h5">
-          {{ game.currentAction }}
+        <div class="text-center font-weight-bold text-h5 pb-3">
+          {{ game.actionTitle }}
         </div>
-        <div class="text-center text-h6">{{ game.actionMessage }}</div>
-        <v-img :src="popupImage"></v-img>
+        <div class="text-center text-h6 pb-5">{{ game.actionMessage }}</div>
+        <div class="px-5 pb-5">
+          <v-img :src="popupImage"></v-img>
+        </div>
       </v-card>
     </div>
   </div>
@@ -493,6 +546,14 @@ const disabled = ref(false)
             :rules="[requiredRule, baseRule]"></v-text-field>
         </v-col>
       </v-row>
+      <v-row>
+        <v-col> ＜参加者＞ </v-col>
+      </v-row>
+      <v-row dense>
+        <v-col>
+          <result-table :resultUsers="resultUsers"></result-table>
+        </v-col>
+      </v-row>
       <v-row class="py-3">
         <v-col class="d-flex justify-end">
           <v-btn
@@ -543,12 +604,20 @@ const disabled = ref(false)
           :width="15" />
       </v-col>
     </v-row>
+    <v-row>
+      <v-col> ＜参加者＞ </v-col>
+    </v-row>
+    <v-row dense>
+      <v-col>
+        <result-table :resultUsers="resultUsers"></result-table>
+      </v-col>
+    </v-row>
   </default-card>
 
   <v-form ref="judgeForm">
     <default-card
       v-if="state === 'JUDGEMENT'"
-      :title="game.decisiveUsers.length > 0 ? '決戦投票' : '投票'"
+      :title="isDecisive ? '決戦投票' : '投票'"
       :show-close="game.hostUser?.code === store.code"
       @close="closeDialog = true"
       style="margin-top: 100px">
@@ -579,6 +648,14 @@ const disabled = ref(false)
       <v-row v-if="!inputed">
         <v-col>
           <v-select v-model="votedUser" required :items="voteItemes" />
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col> ＜参加者＞ </v-col>
+      </v-row>
+      <v-row dense>
+        <v-col>
+          <result-table :resultUsers="resultUsers"></result-table>
         </v-col>
       </v-row>
       <v-row class="py-3">
@@ -632,6 +709,14 @@ const disabled = ref(false)
         >でした
       </v-col>
     </v-row>
+    <v-row>
+      <v-col> ＜参加者＞ </v-col>
+    </v-row>
+    <v-row dense>
+      <v-col>
+        <result-table :resultUsers="resultUsers"></result-table>
+      </v-col>
+    </v-row>
     <v-row class="py-3">
       <v-col class="d-flex justify-end">
         <v-btn
@@ -649,10 +734,7 @@ const disabled = ref(false)
   <default-card
     v-if="state === 'RESULT'"
     title="ゲーム結果"
-    show-close
-    @close="() => $router.push('/')"
     style="margin-top: 100px">
-    <template #close> 戻る </template>
     <v-row>
       <v-col>
         タイトル: <b>{{ game.title }}</b>
@@ -680,30 +762,7 @@ const disabled = ref(false)
     </v-row>
     <v-row dense>
       <v-col>
-        <table border="1" width="100%">
-          <tr>
-            <td class="px-1 text-center">名前</td>
-            <td class="px-1 text-center">秘密のワード</td>
-            <td class="px-1 text-center">役</td>
-            <td class="px-1 text-center">生死</td>
-          </tr>
-          <tr v-for="(u, i) of game.result.users" :key="i">
-            <td class="px-1 text-center">
-              {{ u.name }}
-            </td>
-            <td class="px-1 text-center">
-              {{ u.fetishism }}
-            </td>
-            <td
-              class="px-1 text-center"
-              :class="u.isWolf ? 'font-weight-bold' : ''">
-              {{ u.isWolf ? '人狼' : '市民' }}
-            </td>
-            <td class="px-1 text-center" :class="u.isDied ? 'text-red' : ''">
-              {{ u.isDied ? '死亡' : '生存' }}
-            </td>
-          </tr>
-        </table>
+        <result-table :resultUsers="resultUsers" is-result></result-table>
       </v-col>
     </v-row>
     <v-row class="py-3">

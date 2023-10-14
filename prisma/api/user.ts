@@ -65,7 +65,7 @@ s-wolfへようこそ
 
 現在仮登録状態です。
 以下のリンクをクリックすると、本登録が完了します。
-${process.env.VITE_APP_FRONT_BASE_URL}/resist/temp/${code}
+${process.env.VITE_APP_FRONT_BASE_URL}/s-wolf/resist/temp/${code}
 
 --------------------------------------------------
 s-wolf運営 ほっぴんぐがのん

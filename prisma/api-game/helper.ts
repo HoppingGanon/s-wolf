@@ -145,7 +145,6 @@ export const getGameInfo = async (req: Request, res: Response) => {
   let winner: 'wolf' | 'human' | undefined = undefined
   if (action.type === 'RESULT') {
     // 最後なら特殊処理でユーザーを返す
-    winner = killedUsers.filter((u) => u.isWolf).length === 0 ? 'wolf' : 'human'
     const resultUsers = await prisma.gameOnUser.findMany({
       include: {
         user: true,
@@ -166,6 +165,11 @@ export const getGameInfo = async (req: Request, res: Response) => {
           isDied: u.isDied,
         }
       })
+
+    winner =
+      resultUsers.filter((u) => u.isDied).filter((u) => u.isWolf).length === 0
+        ? 'wolf'
+        : 'human'
   } else {
     killedUsers = game.users
       .filter((u) => u.isDied)
@@ -208,6 +212,7 @@ export const getGameInfo = async (req: Request, res: Response) => {
       return a.user
     }),
 
+    actionTitle: action.title,
     actionMessage: action.message,
 
     result: {
@@ -242,6 +247,7 @@ export async function checkGame(
     status: GameStatusTytpe
     createdAt: Date
     timeLimit: Date
+    discussionSeconds: number
     hostUserId: number
     maxTurns: number
   },
@@ -393,6 +399,7 @@ export async function doTurnEnd(game: {
   timeLimit: Date
   hostUserId: number
   maxTurns: number
+  discussionSeconds: number
 }) {
   const users = await prisma.gameOnUser.findMany({
     where: {
@@ -403,7 +410,7 @@ export async function doTurnEnd(game: {
 
   const wolfs = users.filter((u) => u.isWolf)
   if (wolfs.length > 0) {
-    if (users.length === wolfs.length) {
+    if (users.filter((u) => !u.isWolf).length === wolfs.length) {
       // 人狼勝利
       await prisma.$transaction(async (prisma) => {
         await prisma.action.create({
@@ -428,8 +435,10 @@ export async function doTurnEnd(game: {
       const turnCnt = await prisma.action.count({
         where: {
           type: 'EXECUTION',
+          gameId: game.id,
         },
       })
+
       if (turnCnt >= game.maxTurns) {
         // 逃げ切り
 
@@ -454,12 +463,15 @@ export async function doTurnEnd(game: {
         })
       } else {
         // 継続
+        const timeLimit = new Date()
+        timeLimit.setSeconds(timeLimit.getSeconds() + game.discussionSeconds)
         await prisma.action.create({
           data: {
             gameId: game.id,
             type: 'DISCUSSION',
             title: '再議論タイム',
             message: '人狼はまだ生きています\n議論を再開してください',
+            timeLimit: timeLimit,
           },
         })
       }

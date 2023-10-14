@@ -101,6 +101,7 @@ export interface GetGameResponse extends CheckedResponse {
     name: string
   }[]
 
+  actionTitle: string
   actionMessage: string
 
   result: {
