@@ -38,6 +38,10 @@ const routes: RouteRecordRaw[] = [
     path: '/games/:name',
     component: () => import('../views/Game.vue'),
   },
+  {
+    path: '/history',
+    component: () => import('../views/History.vue'),
+  },
 ]
 
 const router = createRouter({

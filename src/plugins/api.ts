@@ -10,6 +10,7 @@ import {
   PostGameResponse,
   PutInputRequest,
   PutVoteRequest,
+  HistoryGameResponse,
 } from '../../prisma/apimodel'
 import store from './store'
 import { toast } from 'vue3-toastify'
@@ -218,6 +219,18 @@ export class Api {
 
   putNext(gameName: string) {
     return this.put(`/game/${gameName}/next`)
+  }
+
+  getHistory(params?: { page?: number; perPage?: number; search?: string }) {
+    params = {
+      page: 1,
+      perPage: 30,
+      search: '',
+      ...params,
+    }
+    return this.get<HistoryGameResponse[]>(
+      `/history?page=${params.page}&per_page=${params.perPage}&search=${params.search}`
+    )
   }
 }
 

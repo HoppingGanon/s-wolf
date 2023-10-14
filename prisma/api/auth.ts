@@ -18,6 +18,7 @@ app.get('/login', async (_req, res) => {
       code: 'login-001',
       message: result,
     } as ErrorResponse)
+    return
   }
   result = valid(password, [requiredRule, baseRule])
   if (result !== true) {
@@ -26,6 +27,7 @@ app.get('/login', async (_req, res) => {
       code: 'login-002',
       message: result,
     } as ErrorResponse)
+    return
   }
 
   const user = await prisma.user.findFirst({

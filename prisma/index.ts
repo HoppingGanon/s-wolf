@@ -4,6 +4,7 @@ import './api/auth'
 import './api/user'
 import './api-game/common'
 import './api-game/actions'
+import './api-game/history'
 
 const PORT = process.env.PORT || 8000
 

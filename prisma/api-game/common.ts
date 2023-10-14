@@ -103,11 +103,11 @@ app.post<any, any, any, PostGameRequest>('/game', async (req, res) => {
     } as ErrorResponse)
   }
 
-  if (!(maxTurns && maxTurns >= 1 && maxTurns <= 7)) {
+  if (!(maxTurns && maxTurns >= 1 && maxTurns <= 15)) {
     res.status(400)
     res.json({
       code: 'postgames-004',
-      message: '最大ターン数は1～7で指定する必要があります',
+      message: '最大ターン数は1～15で指定する必要があります',
     } as ErrorResponse)
   }
 

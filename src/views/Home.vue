@@ -9,7 +9,7 @@ const openGame = () => {
 </script>
 
 <template>
-  <default-card title="性癖人狼ゲーム" style="margin-top: 100px">
+  <default-card title="s-wolf" style="margin-top: 100px">
     <big-btn
       class="my-3 py-5"
       color="#9080FF"
@@ -26,7 +26,7 @@ const openGame = () => {
       <template v-slot:preIcon> mdi-book-arrow-left </template>
       ゲームに参加する
     </big-btn>
-    <big-btn class="my-3 py-5" color="#FF9080" font-color="white">
+    <big-btn class="my-3 py-5" color="#FF9080" font-color="white" to="/history">
       <template v-slot:preIcon> mdi-book-plus </template>
       過去の結果を見る
     </big-btn>

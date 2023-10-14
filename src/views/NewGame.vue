@@ -28,7 +28,7 @@ const title = ref('')
 const password = ref('')
 const memberCount = ref(4)
 const finnalyReleasing = ref(false)
-const discussionSeconds = ref(10)
+const discussionSeconds = ref(180)
 const discussionSecondsList = [
   { title: '10秒', value: 10 },
   { title: '1分', value: 60 },
@@ -43,7 +43,7 @@ const discussionSecondsList = [
 
 const maxTurns = ref(3)
 const maxTurnsList: { title: string; value: number }[] = []
-for (let turn = 1; turn <= 7; turn++) {
+for (let turn = 1; turn <= 15; turn++) {
   maxTurnsList.push({ title: `${turn}ターン`, value: turn })
 }
 const form = ref()

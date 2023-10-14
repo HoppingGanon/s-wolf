@@ -126,3 +126,16 @@ export interface PutInputRequest {
 export interface PutVoteRequest {
   userCode: string
 }
+
+export interface HistoryGameResponse {
+  name: string
+  title: string
+  hostUser: {
+    name: string
+    code: string
+  }
+  users: {
+    name: string
+    code: string
+  }[]
+}

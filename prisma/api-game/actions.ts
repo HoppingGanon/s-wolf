@@ -567,31 +567,39 @@ app.put<any, any, any, any>('/game/:name/next', async (req, res) => {
     return
   }
 
-  await prisma.userAction.updateMany({
-    data: {
-      completed: true,
-    },
-    where: {
-      gameId: gameObj.game.id,
-      actionId: gameObj.action.id,
-      userId: gameObj.user.id,
-    },
-  })
+  try {
+    await prisma.userAction.updateMany({
+      data: {
+        completed: true,
+      },
+      where: {
+        gameId: gameObj.game.id,
+        actionId: gameObj.action.id,
+        userId: gameObj.user.id,
+      },
+    })
 
-  const cnt = await prisma.userAction.count({
-    where: {
-      gameId: gameObj.game.id,
-      actionId: gameObj.action.id,
-      completed: true,
-    },
-  })
+    const cnt = await prisma.userAction.count({
+      where: {
+        gameId: gameObj.game.id,
+        actionId: gameObj.action.id,
+        completed: true,
+      },
+    })
 
-  if (cnt === gameObj.game.users.length) {
-    // ユーザーが全員確認を完了した場合
-    await doTurnEnd(gameObj.game)
+    if (cnt === gameObj.game.users.length) {
+      // ユーザーが全員確認を完了した場合
+      await doTurnEnd(gameObj.game)
+    }
+    res.status(200)
+    res.json()
+  } catch {
+    res.status(400)
+    res.json({
+      code: 'exe-003',
+      message: '確認に失敗しました',
+    } as ErrorResponse)
   }
-  res.status(200)
-  res.json()
 })
 
 app.delete<any, any, any, PutInputRequest>(
