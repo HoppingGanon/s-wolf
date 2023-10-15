@@ -3,13 +3,15 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
+    meta: {
+      noToast: true,
+    },
     component: () => import('../views/Home.vue'),
   },
   {
     path: '/login',
     meta: {
       isUnauth: true,
-      noToast: true,
     },
     component: () => import('../views/Login.vue'),
   },
