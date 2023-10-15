@@ -59,7 +59,7 @@ const submit = async () => {
       </v-row>
       <v-row dense>
         <v-col class="text-right">
-          <v-btn flat to="/resist/mailaddress"> <u>新規登録はこちら</u> </v-btn>
+          <v-btn flat to="/regist/mailaddress"> <u>新規登録はこちら</u> </v-btn>
         </v-col>
       </v-row>
       <v-row dense>

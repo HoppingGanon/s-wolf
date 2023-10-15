@@ -16,7 +16,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Login.vue'),
   },
   {
-    path: '/resist/mailaddress',
+    path: '/regist/mailaddress',
     name: 'MailCreate',
     meta: {
       isUnauth: true,
@@ -32,7 +32,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/ResistMail.vue'),
   },
   {
-    path: '/resist/temp/:code',
+    path: '/regist/temp/:code',
     name: 'UserCreate',
     meta: {
       isUnauth: true,
