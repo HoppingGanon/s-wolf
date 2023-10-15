@@ -7,7 +7,6 @@ import {
   GameUserData,
   GetGameResponse,
   LIMIT_COMPLETED_SECONDS,
-  LIMIT_EXECUTION_SECONDS,
   LIMIT_JUDGEMENT_SECONDS,
   UserActionData,
 } from '../apimodel'
