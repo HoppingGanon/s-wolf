@@ -9,6 +9,7 @@ const routes: RouteRecordRaw[] = [
     path: '/login',
     meta: {
       isUnauth: true,
+      noToast: true,
     },
     component: () => import('../views/Login.vue'),
   },

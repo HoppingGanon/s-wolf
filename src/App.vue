@@ -30,7 +30,9 @@ const checkToken = async (route: RouteLocationNormalizedLoaded) => {
     }
   } else {
     if (!route.meta.isUnauth) {
-      toast.error('ログイントークンがありません')
+      if (!route.meta.noToast) {
+        toast.error('ログイントークンがありません')
+      }
       router.push('/login')
     }
   }
