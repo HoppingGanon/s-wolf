@@ -10,12 +10,12 @@ app.use((err: any, _req: Request, res: Response, _next: any) => {
 
 // デフォルトヘッダ
 app.use((req, res, next) => {
-  res.header(
+  res.setHeader(
     'Access-Control-Allow-Origin',
-    process.env.ACCESS_CONTROL_ALLOW_ORIGIN
+    process.env.ACCESS_CONTROL_ALLOW_ORIGIN || '*'
   )
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
-  res.header(
+  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+  res.setHeader(
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization, access_token'
   )
