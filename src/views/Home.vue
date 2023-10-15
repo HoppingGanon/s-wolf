@@ -30,5 +30,11 @@ const openGame = () => {
       <template v-slot:preIcon> mdi-book-plus </template>
       過去の結果を見る
     </big-btn>
+    <div class="pb-5 pt-2 d-flex justify-end">
+      <v-btn color="grey" to="/update/mailaddress">
+        <v-icon>mdi-cog</v-icon>
+        ユーザー情報とメールアドレスを変更する
+      </v-btn>
+    </div>
   </default-card>
 </template>

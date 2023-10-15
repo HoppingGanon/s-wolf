@@ -43,7 +43,9 @@ async function load() {
       }
     })
     .catch((err) => {
-      toast.error(err.response?.data?.message)
+      toast.error(
+        err.response?.data?.message || err.message || 'エラーが発生しました'
+      )
     })
 }
 new Promise(async (resolve) => {

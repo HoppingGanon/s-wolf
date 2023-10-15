@@ -91,7 +91,9 @@ const checkGame = async () => {
       isDecisivePopup.value = false
     }
   } catch (err: any) {
-    toast.error(err.response?.data?.message)
+    toast.error(
+      err.response?.data?.message || err.message || 'エラーが発生しました'
+    )
     return
   }
 }
@@ -134,7 +136,9 @@ onMounted(async () => {
       return
     }
   } catch (err: any) {
-    toast.error(err.response?.data?.message)
+    toast.error(
+      err.response?.data?.message || err.message || 'エラーが発生しました'
+    )
     return
   }
 
@@ -172,7 +176,9 @@ const join = async () => {
         await api.postJoinGame(gameName.value, password.value)
         await checkGame()
       } catch (err: any) {
-        toast.error(err.response?.data?.message)
+        toast.error(
+          err.response?.data?.message || err.message || 'エラーが発生しました'
+        )
         router.push(`/join-game`)
       } finally {
         disabled.value = false
@@ -201,7 +207,9 @@ const start = async () => {
     await api.postStartAction(gameName.value)
     await checkGame()
   } catch (err: any) {
-    toast.error(err.response?.data?.message)
+    toast.error(
+      err.response?.data?.message || err.message || 'エラーが発生しました'
+    )
   } finally {
     disabled.value = false
   }
@@ -213,7 +221,9 @@ const input = async () => {
     await api.putInputWord(gameName.value, word.value)
     await checkGame()
   } catch (err: any) {
-    toast.error(err.response?.data?.message)
+    toast.error(
+      err.response?.data?.message || err.message || 'エラーが発生しました'
+    )
   } finally {
     disabled.value = false
   }
@@ -258,7 +268,9 @@ const judge = async () => {
         await api.putVote(gameName.value, votedUser.value || '')
         await checkGame()
       } catch (err: any) {
-        toast.error(err.response?.data?.message)
+        toast.error(
+          err.response?.data?.message || err.message || 'エラーが発生しました'
+        )
       } finally {
         disabled.value = false
         votedUser.value = undefined
@@ -273,7 +285,9 @@ const next = async () => {
     await api.putNext(gameName.value)
     await checkGame()
   } catch (err: any) {
-    toast.error(err.response?.data?.message)
+    toast.error(
+      err.response?.data?.message || err.message || 'エラーが発生しました'
+    )
     router.push(`/join-game`)
   } finally {
     disabled.value = false
@@ -390,7 +404,9 @@ const encrypt = () => {
   api
     .putEncrypt(game.value.name || '')
     .catch((err) => {
-      toast.error(err.response?.data?.message)
+      toast.error(
+        err.response?.data?.message || err.message || 'エラーが発生しました'
+      )
     })
     .finally(() => {
       disabled.value = false

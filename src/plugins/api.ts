@@ -11,6 +11,7 @@ import {
   PutInputRequest,
   PutVoteRequest,
   HistoryGameResponse,
+  UserResponse,
 } from '../../prisma/apimodel'
 import store from './store'
 import { toast } from 'vue3-toastify'
@@ -132,9 +133,10 @@ export class Api {
     }
   }
 
-  postTempUser(mailaddress: string) {
+  postTempUser(mailaddress: string, type: 'regist' | 'update') {
     return this.post('/temp/users', {
-      mailaddress: mailaddress,
+      mailaddress,
+      type,
     } as AltUserRequest)
   }
 
@@ -150,6 +152,24 @@ export class Api {
       password: password,
       password_retype: passwordRetype,
     } as PostUserRequest)
+  }
+
+  putUser(
+    code: string,
+    name: string,
+    password: string,
+    passwordRetype: string
+  ) {
+    return this.put<PostLogin>('/users', {
+      code: code,
+      name: name,
+      password: password,
+      password_retype: passwordRetype,
+    } as PostUserRequest)
+  }
+
+  getUser() {
+    return this.get<UserResponse>('/user')
   }
 
   getLogin(mailaddress: string, password: string) {

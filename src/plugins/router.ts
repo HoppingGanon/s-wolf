@@ -17,6 +17,15 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/resist/mailaddress',
+    name: 'MailCreate',
+    meta: {
+      isUnauth: true,
+    },
+    component: () => import('../views/ResistMail.vue'),
+  },
+  {
+    path: '/update/mailaddress',
+    name: 'MailUpdate',
     meta: {
       isUnauth: true,
     },
@@ -24,6 +33,15 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/resist/temp/:code',
+    name: 'UserCreate',
+    meta: {
+      isUnauth: true,
+    },
+    component: () => import('../views/User.vue'),
+  },
+  {
+    path: '/update/temp/:code',
+    name: 'UserUpdate',
     meta: {
       isUnauth: true,
     },

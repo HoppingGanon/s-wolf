@@ -8,6 +8,7 @@ export const LIMIT_EXECUTION_SECONDS = 60
 
 export interface AltUserRequest {
   mailaddress: string
+  type: 'regist' | 'update'
 }
 
 export interface ErrorResponse {
@@ -140,4 +141,10 @@ export interface HistoryGameResponse {
     name: string
     code: string
   }[]
+}
+
+export interface UserResponse {
+  code: string
+  name: string
+  mailaddress: string
 }
