@@ -1,4 +1,3 @@
-import fs from 'fs'
 import jwt from 'jsonwebtoken'
 import { Response, Request } from 'express'
 import crypto from 'crypto'
@@ -26,7 +25,9 @@ export function digestMessage(message: string, salt: string) {
   })
 }
 
-const privateKey = fs.readFileSync('prisma/private.key')
+const keyText = process.env.PRIVATE_KEY || ''
+const privateKey = Buffer.alloc(keyText.length)
+privateKey.write(keyText)
 
 export function createToken(code: string) {
   return jwt.sign({ code: code }, privateKey, {
