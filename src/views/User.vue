@@ -79,7 +79,8 @@ const submit = async () => {
 </script>
 
 <template>
-  <default-card title="ユーザー登録">
+  <default-card
+    :title="$route.name === 'UserCreate' ? 'ユーザー登録' : '登録情報変更'">
     <v-form ref="form">
       <v-row>
         <v-col>
