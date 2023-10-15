@@ -45,7 +45,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/s-wolf'),
+  history: createWebHistory(),
   routes,
 })
 

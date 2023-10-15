@@ -6,7 +6,7 @@ const props = defineProps<{
   showClose?: boolean
 }>()
 
-const emits = defineEmits<{ (e: 'close'): void }>()
+defineEmits<{ (e: 'close'): void }>()
 </script>
 
 <template>
