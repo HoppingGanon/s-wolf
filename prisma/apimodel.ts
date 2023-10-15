@@ -4,7 +4,7 @@ export const LIMIT_READY_SECONDS = 180
 export const LIMIT_INPUT_SECONDS = 180
 export const LIMIT_JUDGEMENT_SECONDS = 180
 export const LIMIT_EXECUTION_SECONDS = 60
-// const LIMIT_PLOT_SECONDS = 180
+export const LIMIT_COMPLETED_SECONDS = 600
 
 export interface AltUserRequest {
   mailaddress: string

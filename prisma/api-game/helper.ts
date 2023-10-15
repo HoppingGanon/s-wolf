@@ -6,6 +6,8 @@ import {
   ErrorResponse,
   GameUserData,
   GetGameResponse,
+  LIMIT_COMPLETED_SECONDS,
+  LIMIT_EXECUTION_SECONDS,
   LIMIT_JUDGEMENT_SECONDS,
   UserActionData,
 } from '../apimodel'
@@ -369,6 +371,11 @@ export async function checkGame(
       }
     } else if (action.type === 'EXECUTION') {
       await doTurnEnd(game)
+    } else if (action.type === 'RESULT') {
+      return {
+        opened: false,
+        message: '',
+      }
     } else {
       await prisma.game
         .update({
@@ -415,12 +422,15 @@ export async function doTurnEnd(game: {
     if (users.filter((u) => !u.isWolf).length === wolfs.length) {
       // 人狼勝利
       await prisma.$transaction(async (prisma) => {
+        const timeLimit = new Date()
+        timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_COMPLETED_SECONDS)
         await prisma.action.create({
           data: {
             gameId: game.id,
             type: 'RESULT',
             title: 'ゲーム終了',
             message: '人狼の勝利です',
+            timeLimit,
           },
         })
 
@@ -445,12 +455,15 @@ export async function doTurnEnd(game: {
         // 逃げ切り
 
         await prisma.$transaction(async (prisma) => {
+          const timeLimit = new Date()
+          timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_COMPLETED_SECONDS)
           await prisma.action.create({
             data: {
               gameId: game.id,
               type: 'RESULT',
               title: 'ゲーム終了',
               message: '人狼の逃げ切り勝利です',
+              timeLimit,
             },
           })
 
@@ -481,12 +494,15 @@ export async function doTurnEnd(game: {
   } else {
     // 市民勝利
     await prisma.$transaction(async (prisma) => {
+      const timeLimit = new Date()
+      timeLimit.setSeconds(timeLimit.getSeconds() + LIMIT_COMPLETED_SECONDS)
       await prisma.action.create({
         data: {
           gameId: game.id,
           type: 'RESULT',
           title: 'ゲーム終了',
           message: '人狼は死亡しました',
+          timeLimit,
         },
       })
 
