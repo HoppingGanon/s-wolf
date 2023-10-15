@@ -794,7 +794,7 @@ const clickDecrypt = () => {
       </v-col>
     </v-row>
     <v-row>
-      <v-col>
+      <v-col v-if="game.encrypted">
         狼ワード:
         <b>{{
           game.wolfFetishism
@@ -802,6 +802,10 @@ const clickDecrypt = () => {
               '暗号化されています'
             : '非公開'
         }}</b>
+      </v-col>
+      <v-col v-else>
+        狼ワード:
+        <b>{{ game.wolfFetishism || '非公開' }}</b>
       </v-col>
     </v-row>
     <v-row>
@@ -866,7 +870,7 @@ const clickDecrypt = () => {
         秘密ワードを最初に設定した合言葉で暗号化します。一度暗号化すると結果の確認にはパスワードが必要になります。
       </v-card-text>
       <v-card-actions class="d-flex justify-end">
-        <v-btn @click="closeDialog = false"> キャンセル </v-btn>
+        <v-btn @click="encryptDialog = false"> キャンセル </v-btn>
         <v-btn color="primary" @click="encrypt" dark :disabled="disabled">
           暗号化
         </v-btn>
