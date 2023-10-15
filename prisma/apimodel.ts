@@ -114,6 +114,7 @@ export interface GetGameResponse extends CheckedResponse {
     }[]
     winner?: 'wolf' | 'human'
   }
+  encrypted: boolean
 }
 
 export interface PostJoinGameRequest {

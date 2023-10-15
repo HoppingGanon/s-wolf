@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { decrypt } from '../../shared/crypto'
+
 defineProps<{
   resultUsers: {
     code: string
@@ -8,6 +10,8 @@ defineProps<{
     isDied: boolean
   }[]
   isResult?: boolean
+  encrypted?: boolean
+  password?: string
 }>()
 </script>
 
@@ -23,7 +27,14 @@ defineProps<{
       <td class="px-1 text-center">
         {{ u.name }}
       </td>
-      <td class="px-1 text-center">
+      <td v-if="encrypted" class="px-1 text-center">
+        {{
+          u.fetishism
+            ? decrypt(u.fetishism, password || '') || '暗号化されています'
+            : '非公開'
+        }}
+      </td>
+      <td v-else class="px-1 text-center">
         {{ u.fetishism ? u.fetishism : '非公開' }}
       </td>
       <td

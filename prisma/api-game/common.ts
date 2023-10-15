@@ -16,9 +16,10 @@ import {
   valid,
 } from '../../shared/rules'
 import prisma from '../prisma'
-import { createRandomChars, digestMessage, verifyToken } from '../api/helper'
+import { createRandomChars, verifyToken } from '../api/helper'
 import { checkGame, getGameInfo } from './helper'
 import app from '../app'
+import { encrypt } from '../../shared/crypto'
 
 app.get('/my-game', async (_req, res) => {
   const user = await verifyToken(_req, res)
@@ -148,7 +149,7 @@ app.post<any, any, any, PostGameRequest>('/game', async (req, res) => {
           gameName: gameName,
           gameTitle: title,
           hostUserId: user.id,
-          password: await digestMessage(password, gameName),
+          password: password,
           finnalyReleasing: finnalyReleasing,
           maxMembers: memberCount,
           maxTurns: maxTurns,
@@ -292,7 +293,7 @@ app.post<any, any, any, PostJoinGameRequest>(
       }
     }
 
-    if (game.password !== (await digestMessage(password, name))) {
+    if (game.password !== password) {
       res.status(403)
       res.json({
         code: 'joingame-005',
@@ -347,4 +348,65 @@ app.get('/login/check', async (req, res) => {
   }
   res.status(200)
   res.json()
+})
+
+app.put('/game/:name/encrypt', async (req, res) => {
+  try {
+    const gameData = await getGameInfo(req, res)
+    if (gameData === null) {
+      return
+    }
+
+    if (gameData.game.status === 'OPENED') {
+      res.status(400)
+      res.json({
+        code: 'encrypt-001',
+        message: 'ゲームが開いてる間は暗号化できません',
+      } as ErrorResponse)
+      return
+    }
+
+    if (gameData.game.password === '') {
+      res.status(400)
+      res.json({
+        code: 'encrypt-002',
+        message: 'すでに暗号化済みです',
+      } as ErrorResponse)
+      return
+    }
+
+    await prisma.$transaction(async (prisma) => {
+      for (let u of gameData.game.users) {
+        if (u.fetishism) {
+          await prisma.gameOnUser.updateMany({
+            data: {
+              fetishism: encrypt(u.fetishism, gameData.game.password),
+            },
+            where: {
+              userId: u.userId,
+              gameId: u.gameId,
+            },
+          })
+        }
+      }
+
+      await prisma.game.update({
+        data: {
+          password: '',
+        },
+        where: {
+          id: gameData.game.id,
+        },
+      })
+    })
+
+    res.status(200)
+    res.json()
+  } catch {
+    res.status(400)
+    res.json({
+      code: 'encrypt-003',
+      message: '暗号化に失敗しました',
+    } as ErrorResponse)
+  }
 })

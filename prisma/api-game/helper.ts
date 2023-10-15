@@ -219,6 +219,8 @@ export const getGameInfo = async (req: Request, res: Response) => {
       users: killedUsers,
       winner,
     },
+
+    encrypted: game.password === '',
   }
 
   if (action.killedUser) {

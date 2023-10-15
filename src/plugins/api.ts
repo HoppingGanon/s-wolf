@@ -232,6 +232,10 @@ export class Api {
       `/history?page=${params.page}&per_page=${params.perPage}&search=${params.search}`
     )
   }
+
+  putEncrypt(gameName: string) {
+    return this.put(`/game/${gameName}/encrypt`)
+  }
 }
 
 const api = new Api()

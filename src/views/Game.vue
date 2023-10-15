@@ -12,6 +12,7 @@ import 'vue3-toastify/dist/index.css'
 import axios from 'axios'
 import { watch } from 'vue'
 import ResultTable from '../components/ResultTable.vue'
+import { decrypt } from '../../shared/crypto'
 
 const route = useRoute()
 
@@ -55,6 +56,7 @@ const game = ref<GetGameResponse>({
   result: {
     users: [],
   },
+  encrypted: false,
 })
 const password = ref('')
 
@@ -380,6 +382,36 @@ const resultUsers = computed(() => {
 
   return list.sort((a, b) => (a.code < b.code ? -1 : 1))
 })
+
+const encryptDialog = ref(false)
+
+const encrypt = () => {
+  disabled.value = true
+  api
+    .putEncrypt(game.value.name || '')
+    .catch((err) => {
+      toast.error(err.response?.data?.message)
+    })
+    .finally(() => {
+      disabled.value = false
+      encryptDialog.value = false
+    })
+}
+
+const resultPassword = ref('')
+const resultPasswordTemp = ref('')
+const decrypted = ref(false)
+const decryptedDialog = ref(false)
+
+const clickDecrypt = () => {
+  if (decrypt(game.value.wolfFetishism, resultPasswordTemp.value) === '') {
+    toast.error('パスワードが一致しません')
+  } else {
+    resultPassword.value = resultPasswordTemp.value
+    decryptedDialog.value = false
+    decrypted.value = true
+  }
+}
 </script>
 
 <template>
@@ -747,7 +779,13 @@ const resultUsers = computed(() => {
     </v-row>
     <v-row>
       <v-col>
-        狼ワード: <b>{{ game.wolfFetishism }}</b>
+        狼ワード:
+        <b>{{
+          game.wolfFetishism
+            ? decrypt(game.wolfFetishism, resultPassword || '') ||
+              '暗号化されています'
+            : '非公開'
+        }}</b>
       </v-col>
     </v-row>
     <v-row>
@@ -762,11 +800,29 @@ const resultUsers = computed(() => {
     </v-row>
     <v-row dense>
       <v-col>
-        <result-table :resultUsers="resultUsers" is-result></result-table>
+        <result-table
+          :resultUsers="resultUsers"
+          is-result
+          :encrypted="game.encrypted"
+          :password="resultPassword"></result-table>
       </v-col>
     </v-row>
     <v-row class="py-3">
       <v-col class="d-flex justify-end">
+        <v-btn
+          v-if="!game.encrypted"
+          color="grey"
+          class="mr-1"
+          @click="encryptDialog = true">
+          合言葉で暗号化する
+        </v-btn>
+        <v-btn
+          v-if="game.encrypted && !decrypted"
+          color="grey"
+          class="mr-1"
+          @click="decryptedDialog = true">
+          合言葉で復号化する
+        </v-btn>
         <v-btn color="primary" to="/"> ホームに戻る </v-btn>
       </v-col>
     </v-row>
@@ -782,6 +838,47 @@ const resultUsers = computed(() => {
         <v-btn @click="closeDialog = false"> キャンセル </v-btn>
         <v-btn color="primary" @click="close" dark :disabled="disabled">
           強制終了
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="encryptDialog">
+    <v-card>
+      <v-card-title> データベース上の秘密ワードを暗号化 </v-card-title>
+      <v-card-text>
+        秘密ワードを最初に設定した合言葉で暗号化します。一度暗号化すると結果の確認にはパスワードが必要になります。
+      </v-card-text>
+      <v-card-actions class="d-flex justify-end">
+        <v-btn @click="closeDialog = false"> キャンセル </v-btn>
+        <v-btn color="primary" @click="encrypt" dark :disabled="disabled">
+          暗号化
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="decryptedDialog">
+    <v-card>
+      <v-card-title> 合言葉の入力 </v-card-title>
+      <v-card-text> 合言葉を入力して秘密のワードを確認します。 </v-card-text>
+      <div class="pa-5">
+        <v-text-field
+          label="合言葉"
+          v-model="resultPasswordTemp"
+          :rules="[requiredRule]"></v-text-field>
+      </div>
+      <v-card-actions class="d-flex justify-end">
+        <v-btn
+          class="mr-1"
+          color="grey"
+          dark
+          :disabled="disabled"
+          @click="decryptedDialog = false">
+          キャンセル
+        </v-btn>
+        <v-btn color="primary" dark :disabled="disabled" @click="clickDecrypt">
+          復号化
         </v-btn>
       </v-card-actions>
     </v-card>
