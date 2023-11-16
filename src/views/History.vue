@@ -90,6 +90,20 @@ const headers = [
         </template>
       </v-data-table>
     </v-card>
+    <v-dialog :model-value="loading" persistent>
+      <div class="d-flex justify-center">
+        <v-card clasds="pa-5">
+          <div class="d-flex justify-center pa-5">
+            <v-progress-circular
+              :size="80"
+              :width="10"
+              color="primary"
+              indeterminate></v-progress-circular>
+          </div>
+          <div class="d-flex justify-center">読み込み中</div>
+        </v-card>
+      </div>
+    </v-dialog>
   </default-card>
 </template>
 

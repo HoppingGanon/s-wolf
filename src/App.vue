@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRefs } from 'vue'
+import { ref, toRefs } from 'vue'
 import { watch } from 'vue'
 import { RouteLocationNormalizedLoaded, useRoute } from 'vue-router'
 import api from './plugins/api'
@@ -10,6 +10,9 @@ import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
 
 const route = useRoute()
+
+const loading = ref(false)
+const loadingDisp = ref(1)
 
 function toastLogout() {
   toast.error('ログイン有効時間を超過したため、ログアウトしました')
@@ -57,7 +60,6 @@ const ready = async () => {
   await router.isReady()
 
   const { fullPath } = toRefs(route)
-  await checkToken(route)
   watch(fullPath, (from) => {
     if (from !== '/login') {
       checkToken(route)
@@ -65,18 +67,66 @@ const ready = async () => {
   })
 }
 
+const timer = ref(new Date())
+
 onMounted(() => {
-  api.getHealth()
+  loading.value = true
+  api
+    .getHealth()
+    .then(() => {
+      setTimeout(
+        () => {
+          loadingDisp.value = 0
+          setTimeout(() => {
+            loading.value = false
+          }, 300)
+        },
+        Math.max(0, 1000 - (new Date().getTime() - timer.value.getTime()))
+      )
+    })
+    .catch(() => {
+      setTimeout(
+        () => {
+          loadingDisp.value = 0
+          setTimeout(() => {
+            loading.value = false
+          }, 300)
+        },
+        Math.max(0, 1000 - (new Date().getTime() - timer.value.getTime()))
+      )
+    })
   ready()
 })
 </script>
 
 <template>
   <v-app style="background: #120712">
+    <div v-if="loading" class="splash d-flex justify-center align-center">
+      <div>
+        <div class="d-flex justify-center">
+          <span class="font-weight-bold text-h3">s-wolf</span>
+        </div>
+        <div class="d-flex justify-center pt-5">
+          <span class="font-weight-bold text-h5">loading...</span>
+        </div>
+      </div>
+    </div>
     <v-main>
       <router-view :key="$route.fullPath" />
     </v-main>
   </v-app>
 </template>
 
-<style scoped></style>
+<style scoped>
+.splash {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: 2500;
+  transition-property: all;
+  transition-duration: 300ms;
+  opacity: v-bind(loadingDisp);
+  background-color: #060006;
+  color: white;
+}
+</style>
