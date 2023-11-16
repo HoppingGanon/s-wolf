@@ -59,6 +59,10 @@ const checkToken = async (route: RouteLocationNormalizedLoaded) => {
 const ready = async () => {
   await router.isReady()
 
+  if (route.path !== '/login') {
+    checkToken(route)
+  }
+
   const { fullPath } = toRefs(route)
   watch(fullPath, (from) => {
     if (from !== '/login') {
