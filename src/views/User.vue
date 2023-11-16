@@ -115,7 +115,9 @@ const submit = async () => {
       </v-row>
       <v-row>
         <v-col class="d-flex justify-end">
-          <v-btn color="primary" @click="submit"> 登録 </v-btn>
+          <v-btn color="primary" @click="submit" :disabled="loading">
+            登録
+          </v-btn>
         </v-col>
       </v-row>
     </v-form>

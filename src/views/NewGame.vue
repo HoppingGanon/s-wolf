@@ -40,6 +40,7 @@ const discussionSecondsList = [
   { title: '7分', value: 420 },
   { title: '8分', value: 480 },
 ]
+const loading = ref(false)
 
 const maxTurns = ref(3)
 const maxTurnsList: { title: string; value: number }[] = []
@@ -83,7 +84,8 @@ const submit = async () => {
           <v-text-field
             v-model="title"
             label="ゲームタイトル"
-            :rules="[requiredRule, baseRule]" />
+            :rules="[requiredRule, baseRule]"
+            :disabled="loading" />
         </v-col>
       </v-row>
       <v-row dense>
@@ -91,7 +93,8 @@ const submit = async () => {
           <v-text-field
             v-model="password"
             label="あいことば"
-            :rules="[requiredRule, passwordRule]" />
+            :rules="[requiredRule, passwordRule]"
+            :disabled="loading" />
         </v-col>
       </v-row>
       <v-row dense>
@@ -100,7 +103,8 @@ const submit = async () => {
             label="参加人数"
             v-model="memberCount"
             :items="memberCountItems"
-            :rules="[memberCountRule]" />
+            :rules="[memberCountRule]"
+            :disabled="loading" />
         </v-col>
       </v-row>
       <v-row dense>
@@ -108,7 +112,8 @@ const submit = async () => {
           <v-select
             label="議論タイム"
             v-model="discussionSeconds"
-            :items="discussionSecondsList" />
+            :items="discussionSecondsList"
+            :disabled="loading" />
         </v-col>
       </v-row>
       <v-row dense>
@@ -116,19 +121,23 @@ const submit = async () => {
           <v-select
             label="最大ターン数"
             v-model="maxTurns"
-            :items="maxTurnsList" />
+            :items="maxTurnsList"
+            :disabled="loading" />
         </v-col>
       </v-row>
       <v-row dense>
         <v-col>
           <v-checkbox
             label="ゲーム終了後に全員のワードを公開する"
-            v-model="finnalyReleasing" />
+            v-model="finnalyReleasing"
+            :disabled="loading" />
         </v-col>
       </v-row>
       <v-row>
         <v-col class="d-flex justify-end">
-          <v-btn color="primary" @click="submit">ゲーム作成</v-btn>
+          <v-btn color="primary" @click="submit" :disabled="loading"
+            >ゲーム作成</v-btn
+          >
         </v-col>
       </v-row>
     </v-form>

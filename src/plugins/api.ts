@@ -256,6 +256,10 @@ export class Api {
   putEncrypt(gameName: string) {
     return this.put(`/game/${gameName}/encrypt`)
   }
+
+  getHealth() {
+    return this.get('/others/health')
+  }
 }
 
 const api = new Api()

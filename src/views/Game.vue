@@ -886,7 +886,8 @@ const clickDecrypt = () => {
         <v-text-field
           label="合言葉"
           v-model="resultPasswordTemp"
-          :rules="[requiredRule]"></v-text-field>
+          :rules="[requiredRule]"
+          :disabled="disabled"></v-text-field>
       </div>
       <v-card-actions class="d-flex justify-end">
         <v-btn

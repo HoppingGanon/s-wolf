@@ -31,7 +31,7 @@ const size = computed(() => {
 </script>
 
 <template>
-  <v-card class="btn" @click="emits('click')">
+  <v-card class="btn" :color="color" @click="emits('click')">
     <v-icon v-if="$slots.preIcon !== undefined" :size="size">
       <slot name="preIcon"></slot>
     </v-icon>
@@ -43,7 +43,6 @@ const size = computed(() => {
 
 <style scoped>
 .btn {
-  background-color: v-bind('color || "white"');
   color: v-bind('fontColor || "black"');
 }
 .content {
