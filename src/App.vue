@@ -35,8 +35,8 @@ const checkToken = async (route: RouteLocationNormalizedLoaded) => {
       if (exp.getTime() < new Date().getTime()) {
         // 現在時刻が期限を上回った場合
         toastLogout()
+        return
       }
-      return
     }
 
     try {
