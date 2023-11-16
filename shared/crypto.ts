@@ -6,7 +6,11 @@ export function encrypt(value: string, password: string) {
 }
 
 export function decrypt(value: string, password: string) {
-  var bytes = CryptoJS.AES.decrypt(value, password)
-  var originalText = bytes.toString(CryptoJS.enc.Utf8)
-  return originalText
+  try {
+    var bytes = CryptoJS.AES.decrypt(value, password)
+    var originalText = bytes.toString(CryptoJS.enc.Utf8)
+    return originalText
+  } catch {
+    return ''
+  }
 }

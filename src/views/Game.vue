@@ -151,6 +151,7 @@ onMounted(async () => {
           router.push('/')
           return
         }
+        console.log(res.data)
         game.value = res.data
         state.value = game.value.currentAction || 'READY'
       })
@@ -408,9 +409,10 @@ const encrypt = () => {
         err.response?.data?.message || err.message || 'エラーが発生しました'
       )
     })
-    .finally(() => {
+    .finally(async () => {
       disabled.value = false
       encryptDialog.value = false
+      await checkGame()
     })
 }
 
