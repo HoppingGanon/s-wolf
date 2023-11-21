@@ -258,7 +258,9 @@ export class Api {
   }
 
   getHealth() {
-    return this.get('/others/health')
+    return this.get('/others/health', {
+      timeout: 10000,
+    })
   }
 }
 
