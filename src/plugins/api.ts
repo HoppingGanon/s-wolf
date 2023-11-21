@@ -258,9 +258,15 @@ export class Api {
   }
 
   getHealth() {
-    return this.get('/others/health', {
-      timeout: 10000,
-    })
+    return this.get(
+      '/others/health',
+      {
+        timeout: 10000,
+      },
+      {
+        hideToast: true,
+      }
+    )
   }
 }
 

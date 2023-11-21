@@ -19,7 +19,7 @@ export default defineConfig({
         lang: 'ja',
         name: 's-wolf',
         short_name: 's-wolf',
-        start_url: 'http://s-wolf.onrender.com',
+        start_url: 'https://s-wolf.onrender.com',
         scope: 'https://s-wolf.onrender.com/',
         description: 'みんなの秘密をかけて遊ぶ人狼ゲーム',
 
