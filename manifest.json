@@ -1,0 +1,27 @@
+{
+    "theme_color": "#8936FF",
+    "background_color": "#2EC6FE",
+    "icons": [
+        {
+            "purpose": "maskable",
+            "sizes": "512x512",
+            "src": "icon512_maskable.png",
+            "type": "image/png"
+        },
+        {
+            "purpose": "any",
+            "sizes": "512x512",
+            "src": "icon512_rounded.png",
+            "type": "image/png"
+        }
+    ],
+    "orientation": "any",
+    "display": "standalone",
+    "dir": "auto",
+    "lang": "ja-jp",
+    "name": "s-wolf",
+    "short_name": "s-wolf",
+    "start_url": "https://s-wolf.onrender.com",
+    "scope": "https://s-wolf.onrender.com/",
+    "description": "みんなの秘密をかけて遊ぶ人狼ゲーム"
+}

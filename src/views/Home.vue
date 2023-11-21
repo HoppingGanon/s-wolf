@@ -16,7 +16,7 @@ const logout = () => {
 </script>
 
 <template>
-  <default-card title="s-wolf" style="margin-top: 100px">
+  <default-card title="ホーム" style="margin-top: 100px" showLogo>
     <big-btn
       class="my-3 py-5"
       color="primary"

@@ -36,7 +36,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <default-card title="ログイン" style="margin-top: 100px">
+  <default-card title="ログイン" style="margin-top: 100px" showLogo>
     <v-form ref="form">
       <v-row>
         <v-col>

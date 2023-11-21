@@ -4,6 +4,7 @@ const props = defineProps<{
   color?: string
   noDivider?: boolean
   showClose?: boolean
+  showLogo?: boolean
 }>()
 
 defineEmits<{ (e: 'close'): void }>()
@@ -11,6 +12,20 @@ defineEmits<{ (e: 'close'): void }>()
 
 <template>
   <v-container>
+    <template v-if="showLogo">
+      <v-row class="d-flex justify-center">
+        <v-col cols="4" sm="3" md="2" lg="1" xl="1">
+          <v-avatar size="100%" color="secondary" class="py-3 pl-1 pr-5">
+            <v-img :src="`/icon.svg`" />
+          </v-avatar>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col class="d-flex justify-center">
+          <div class="text-white text-h4 font-weight-bold">s-wolf</div>
+        </v-col>
+      </v-row>
+    </template>
     <v-row class="d-flex justify-center">
       <v-col cols="12" sm="10" md="8" lg="6" xl="4">
         <v-card>
